@@ -1,0 +1,20 @@
+node_modules/
+dist/
+captures/
+.DS_Store
+
+# Local tooling and test output
+.vite/
+coverage/
+playwright-report/
+test-results/
+*.log
+
+# Local configuration and credentials
+.env
+.env.*
+!.env.example
+
+# Generated showcase media stays local. Keep only the in-engine README preview.
+media/*
+!media/SUNBREAK-showcase-poster.jpg

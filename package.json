@@ -1,0 +1,39 @@
+{
+  "name": "sunbreak-downhill",
+  "version": "1.0.0",
+  "description": "A procedural cel-shaded downhill BMX racer built with Three.js.",
+  "private": true,
+  "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Imirushik/sunbreak-downhill.git"
+  },
+  "homepage": "https://github.com/Imirushik/sunbreak-downhill#readme",
+  "keywords": [
+    "threejs",
+    "typescript",
+    "bmx",
+    "racing-game",
+    "cel-shading",
+    "procedural-generation"
+  ],
+  "scripts": {
+    "dev": "vite --host 0.0.0.0",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview --host 0.0.0.0",
+    "capture": "node scripts/capture.mjs",
+    "test": "node scripts/test.mjs",
+    "capture:motion": "node scripts/motion.mjs",
+    "perf": "node scripts/performance.mjs",
+    "demo": "node scripts/showcase.mjs"
+  },
+  "dependencies": {
+    "three": "^0.185.1"
+  },
+  "devDependencies": {
+    "@types/three": "^0.185.0",
+    "typescript": "^5.9.3",
+    "vite": "^7.1.5",
+    "@playwright/test": "^1.55.0"
+  }
+}
