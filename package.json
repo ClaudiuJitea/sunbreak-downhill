@@ -6,9 +6,9 @@
   "type": "module",
   "repository": {
     "type": "git",
-    "url": "https://github.com/Imirushik/sunbreak-downhill.git"
+    "url": "https://github.com/Imirushik/sunbreak-downhill-3D-game.git"
   },
-  "homepage": "https://github.com/Imirushik/sunbreak-downhill#readme",
+  "homepage": "https://github.com/Imirushik/sunbreak-downhill-3D-game#readme",
   "keywords": [
     "threejs",
     "typescript",

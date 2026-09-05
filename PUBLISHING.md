@@ -3,7 +3,7 @@
 Recommended repository details:
 
 - **Owner:** `Imirushik`
-- **Repository:** `sunbreak-downhill`
+- **Repository:** `sunbreak-downhill-3D-game`
 - **Visibility:** Public
 - **Description:** `A procedural cel-shaded downhill BMX racer built with Three.js—four riders, bike physics, tricks, dynamic weather and wild speed effects.`
 - **Topics:** `threejs`, `typescript`, `vite`, `webgl`, `bmx`, `racing-game`, `procedural-generation`, `cel-shading`, `npr`, `browser-game`
@@ -24,7 +24,7 @@ Recommended repository details:
    git config --local user.name "Imirushik"
    git config --local user.email "YOUR_GITHUB_NOREPLY_ADDRESS"
    git commit -m "Launch SUNBREAK: Downhill Club"
-   git remote add origin https://github.com/Imirushik/sunbreak-downhill.git
+   git remote add origin https://github.com/Imirushik/sunbreak-downhill-3D-game.git
    git push -u origin main
    ```
 
