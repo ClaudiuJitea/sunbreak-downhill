@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import {addOutline} from './npr';
-import type { MaterialFactory, TrackSample, World } from './types';
+import type { EnvironmentDef, MaterialFactory, TrackSample, World } from './types';
 
 // SUNBREAK mountain. The height field is eroded once, then carved by the course.
 // The rings below sample that same field: visual ground and wheel contacts agree.
@@ -67,9 +67,207 @@ function flatMaterial(color:number,map:THREE.Texture|null=null) {
   });
 }
 
-export function createWorld(materialFactory: MaterialFactory): World {
-  const group=new THREE.Group(); group.name='Eroded sunbreak mountain';
-  const random=rng(202602), field=new Float32Array(SIZE*SIZE);
+export interface TrackDef {
+  id: number;
+  name: string;
+  subtitle: string;
+  seed: number;
+  controls: [number, number][];
+  elevationFn: (z: number) => number;
+  jumpRatios: number[];
+  jumpLifts: number[];
+  hasRavine: boolean;
+  ravineJumpIndex?: number;
+  sectionNames: string[];
+  riverZ: number;
+  environment: EnvironmentDef;
+}
+
+export const TRACK_DEFS: TrackDef[] = [
+  {
+    id: 0,
+    name: 'THE SUNBREAK DESCENT',
+    subtitle: 'SUMMIT → RIVER VALLEY',
+    seed: 202602,
+    controls: [
+      [0,0],[6,-48],[-27,-102],[4,-165],[63,-225],[88,-300],[-17,-373],[-108,-430],[-125,-485],[-26,-527],[87,-572],[127,-637],[58,-698],[-38,-759],[-83,-821],[-43,-892],[52,-974],[69,-1050],[25,-1130],[-50,-1212],[-100,-1280],[-65,-1375],[18,-1470],[35,-1570],[0,-1690],
+    ],
+    elevationFn: (z: number) => 451 + z * .245 + Math.sin(-z / 270) * 9,
+    jumpRatios: [.185, .360, .431, .580, .718, .885],
+    jumpLifts: [4.8, 5.0, 5.2, 5.6, 6.5, 5.2],
+    hasRavine: true,
+    ravineJumpIndex: 4,
+    sectionNames: ['NEEDLE POINT','THE FALL LINE','CEDAR SWITCHBACKS','ROCK GARDEN','SKY TABLE','RAZOR RIDGE','THE DIVIDE','RIVER RUN','HOME STRAIGHT'],
+    riverZ: -1740,
+    environment: {
+      skyHorizon: '#e8cf97',
+      skyZenith: '#4e9fb0',
+      fogColor: '#a8c7b8',
+      sunshaftColor: 0xffe2a3,
+      terrainColors: ['#82a777','#a8b87b','#919e92','#b8c398','#f2e5c0'],
+      dirtColor: 0xc69d65,
+      edgeColor: 0x8e9565,
+      wornColor: 0xd8b780,
+      ridgeColors: [0x668f88, 0x8eaaa0, 0xb6c3ac, 0xd7d7b9],
+      trunkColor: 0x675845,
+      leafColor: 0x587b68,
+      leafLightColor: 0x829769,
+      rockColor: 0x79848a,
+      flowerColor: 0xf4cb67,
+      riverColor: 0x79b6b2,
+      waterGlintColor: 0xe7e8bd,
+    },
+  },
+  {
+    id: 1,
+    name: 'RIDGE RUNNER',
+    subtitle: 'RAZOR CREST → CEDAR GORGE',
+    seed: 202603,
+    controls: [
+      [0, 0], [-25, -55], [38, -110], [75, -170], [30, -235], [-45, -305], [-95, -370], [-55, -440],
+      [22, -505], [92, -570], [130, -640], [70, -710], [-35, -780], [-115, -845], [-140, -920],
+      [-65, -995], [45, -1075], [105, -1155], [65, -1235], [-35, -1310], [-90, -1390], [-48, -1475],
+      [30, -1565], [15, -1655], [0, -1750]
+    ],
+    elevationFn: (z: number) => 468 + z * .252 + Math.sin(-z / 240) * 11,
+    jumpRatios: [.160, .315, .450, .585, .720, .860],
+    jumpLifts: [5.2, 5.5, 5.8, 6.2, 5.6, 5.4],
+    hasRavine: false,
+    sectionNames: ['RAZOR CREST','DEVIL S DROP','PINE CHICANE','SLATE CORRIDOR','TWIN ROLLERS','CEDAR GORGE','THE FLUME','TIMBERLINE','SPRINT FINISH'],
+    riverZ: -1780,
+    environment: {
+      skyHorizon: '#c8dbe3',
+      skyZenith: '#26495c',
+      fogColor: '#98b4c4',
+      sunshaftColor: 0xbedde6,
+      terrainColors: ['#5b6960','#728070','#838e91','#9ea7a6','#d6dcd9'],
+      dirtColor: 0x827c73,
+      edgeColor: 0x5c6361,
+      wornColor: 0xa19c94,
+      ridgeColors: [0x364852, 0x4f6470, 0x728996, 0xa5b8c2],
+      trunkColor: 0x44403c,
+      leafColor: 0x385452,
+      leafLightColor: 0x507370,
+      rockColor: 0x6b777d,
+      flowerColor: 0xccd8e0,
+      riverColor: 0x8bc3d1,
+      waterGlintColor: 0xffffff,
+    },
+  },
+  {
+    id: 2,
+    name: 'GRAVITY LAB',
+    subtitle: 'NORTH BLUFF → LAKE BASIN',
+    seed: 202604,
+    controls: [
+      [0, 0], [28, -60], [68, -125], [35, -195], [-48, -270], [-95, -345], [-55, -425],
+      [30, -505], [118, -580], [150, -660], [95, -740], [-20, -820], [-105, -900], [-130, -985],
+      [-60, -1070], [52, -1160], [115, -1250], [75, -1340], [-30, -1425], [-95, -1510], [-65, -1605],
+      [20, -1710], [35, -1815], [0, -1920]
+    ],
+    elevationFn: (z: number) => 482 + z * .238 + Math.sin(-z / 290) * 13,
+    jumpRatios: [.150, .260, .390, .510, .650, .780, .890],
+    jumpLifts: [6.2, 7.2, 7.0, 7.5, 7.8, 7.2, 6.8],
+    hasRavine: false,
+    sectionNames: ['NORTH BLUFF','STEP DOWN','MEGA TABLE','BERM SLALOM','SUPER KICKER','HIP JUMP','SLOPESTYLE PARK','LAKE BASIN','VICTORY RUN'],
+    riverZ: -1940,
+    environment: {
+      skyHorizon: '#ffebaa',
+      skyZenith: '#1e88e5',
+      fogColor: '#bee3db',
+      sunshaftColor: 0xfff0b8,
+      terrainColors: ['#549646','#72b54e','#6e8064','#92ca60','#fae5a8'],
+      dirtColor: 0xde9b43,
+      edgeColor: 0x4b853c,
+      wornColor: 0xf5bc64,
+      ridgeColors: [0x2d6a5e, 0x4b8e7e, 0x72b9a2, 0xa5dec9],
+      trunkColor: 0x543d2b,
+      leafColor: 0x429648,
+      leafLightColor: 0x66bf6a,
+      rockColor: 0x6e7880,
+      flowerColor: 0xffeb3b,
+      riverColor: 0x29b6f6,
+      waterGlintColor: 0xffffff,
+    },
+  },
+  {
+    id: 3,
+    name: 'RED DUST CANYON',
+    subtitle: 'SLICKROCK RIDGE → COYOTE GULCH',
+    seed: 202605,
+    controls: [
+      [0, 0], [-35, -70], [-80, -145], [-40, -220], [45, -295], [110, -370], [80, -450],
+      [-25, -530], [-105, -610], [-135, -695], [-65, -780], [40, -865], [125, -950],
+      [90, -1040], [-20, -1125], [-95, -1215], [-60, -1305], [35, -1400], [90, -1495],
+      [50, -1595], [-20, -1690], [0, -1820]
+    ],
+    elevationFn: (z: number) => 475 + z * .244 + Math.sin(-z / 210) * 12 + Math.cos(-z / 420) * 8,
+    jumpRatios: [.170, .310, .460, .590, .730, .870],
+    jumpLifts: [5.6, 6.4, 6.0, 7.4, 6.2, 5.8],
+    hasRavine: false,
+    sectionNames: ['SLICKROCK RIDGE','RED WALL DROP','SANDSTONE GULLY','COYOTE CHICANE','CANYON GAP','DUST BOWL','ECHO CHASM','RIVER BED','CANYON EXIT'],
+    riverZ: -1840,
+    environment: {
+      skyHorizon: '#fca768',
+      skyZenith: '#665575',
+      fogColor: '#d48866',
+      sunshaftColor: 0xfdd2a0,
+      terrainColors: ['#b84d30','#c85d38','#9e3f28','#d67548','#e8a272'],
+      dirtColor: 0xb33620,
+      edgeColor: 0x7a2516,
+      wornColor: 0xd15536,
+      ridgeColors: [0x681d18, 0x8a2f22, 0xb84e36, 0xde7d58],
+      trunkColor: 0x4a3227,
+      leafColor: 0x5c613e,
+      leafLightColor: 0x7d8253,
+      rockColor: 0x9e3f2b,
+      flowerColor: 0xf09848,
+      riverColor: 0x9c6842,
+      waterGlintColor: 0xf2cf9b,
+    },
+  },
+  {
+    id: 4,
+    name: 'BLACK FOREST SLALOM',
+    subtitle: 'CROWN PEAK → MOSS CREEK',
+    seed: 202606,
+    controls: [
+      [0, 0], [35, -65], [85, -135], [50, -210], [-35, -285], [-110, -365], [-75, -450],
+      [30, -535], [120, -620], [145, -710], [80, -800], [-30, -890], [-120, -980],
+      [-145, -1075], [-70, -1170], [45, -1265], [130, -1360], [85, -1460], [-35, -1560],
+      [-110, -1660], [-70, -1770], [25, -1890], [0, -2020]
+    ],
+    elevationFn: (z: number) => 510 + z * .248 + Math.sin(-z / 260) * 14,
+    jumpRatios: [.140, .280, .430, .580, .720, .860],
+    jumpLifts: [5.5, 6.2, 6.5, 7.0, 6.2, 5.8],
+    hasRavine: false,
+    sectionNames: ['CROWN PEAK','PINE NEEDLE DROP','ROOT CARPET','THE LABYRINTH','BEAR RIDGE GAP','MOSSY HOLLOW','TIMBER RUN','CREEK CROSSING','FINISH GLADE'],
+    riverZ: -2040,
+    environment: {
+      skyHorizon: '#7a9489',
+      skyZenith: '#1b2e28',
+      fogColor: '#3a554a',
+      sunshaftColor: 0x95baa8,
+      terrainColors: ['#1e3b24','#2a4c2d','#334436','#3e5e39','#63755c'],
+      dirtColor: 0x3b2b1e,
+      edgeColor: 0x203522,
+      wornColor: 0x524131,
+      ridgeColors: [0x11211a, 0x1c342a, 0x2e4e3f, 0x4d715f],
+      trunkColor: 0x2b1e17,
+      leafColor: 0x1a3824,
+      leafLightColor: 0x2d5538,
+      rockColor: 0x424a44,
+      flowerColor: 0x8fc286,
+      riverColor: 0x214a4d,
+      waterGlintColor: 0x8ae0db,
+    },
+  }
+];
+
+export function createWorld(materialFactory: MaterialFactory, trackId = 0): World {
+  const trackDef = TRACK_DEFS[trackId] || TRACK_DEFS[0];
+  const group=new THREE.Group(); group.name=`Eroded mountain - ${trackDef.name}`;
+  const random=rng(trackDef.seed), field=new Float32Array(SIZE*SIZE);
   for(let iz=0;iz<SIZE;iz++)for(let ix=0;ix<SIZE;ix++) {
     const x=MIN_X+ix/(SIZE-1)*DOMAIN,z=MIN_Z+iz/(SIZE-1)*DOMAIN;
     const broad=noise(x/350,z/350)*95+noise(x/130+12,z/130)*34+noise(x/42,z/42)*9;
@@ -82,10 +280,8 @@ export function createWorld(materialFactory: MaterialFactory): World {
     const ix=Math.floor(fx),iz=Math.floor(fz),u=fx-ix,v=fz-iz,k=iz*SIZE+ix;
     return THREE.MathUtils.lerp(THREE.MathUtils.lerp(field[k],field[k+1],u),THREE.MathUtils.lerp(field[k+SIZE],field[k+SIZE+1],u),v);
   }
-  const controls=[
-    [0,0],[6,-48],[-27,-102],[4,-165],[63,-225],[88,-300],[-17,-373],[-108,-430],[-125,-485],[-26,-527],[87,-572],[127,-637],[58,-698],[-38,-759],[-83,-821],[-43,-892],[52,-974],[69,-1050],[25,-1130],[-50,-1212],[-100,-1280],[-65,-1375],[18,-1470],[35,-1570],[0,-1690],
-  ];
-  const curve=new THREE.CatmullRomCurve3(controls.map(([x,z])=>new THREE.Vector3(x,451+z*.245+Math.sin(-z/270)*9,z)),false,'catmullrom',.35);
+  const controls=trackDef.controls;
+  const curve=new THREE.CatmullRomCurve3(controls.map(([x,z])=>new THREE.Vector3(x,trackDef.elevationFn(z),z)),false,'catmullrom',.35);
   curve.arcLengthDivisions=2200;
   const length=curve.getLength(), count=Math.ceil(length/2), ds=length/count;
   const centers:THREE.Vector3[]=[], tangents:THREE.Vector3[]=[], rights:THREE.Vector3[]=[];
@@ -95,9 +291,24 @@ export function createWorld(materialFactory: MaterialFactory): World {
     centers.push(p);tangents.push(t);rights.push(r);
     const key=`${Math.floor(p.x/bucket)},${Math.floor(p.z/bucket)}`;let cell=grid.get(key);if(!cell){cell=[];grid.set(key,cell);}cell.push(i);
   }
-  const jumpLips=[length*.431,length*.718];
-  function ramp(s:number) { for(let i=0;i<jumpLips.length;i++){const d=jumpLips[i]-s;if(d>=0&&d<17)return {height:(1-d/17)**1.7*(i?6.5:4.5),amount:1-d/17};} return {height:0,amount:0}; }
-  function ravine(s:number) { const d=s-jumpLips[1];return d>1&&d<28 ? 20*Math.min(smooth(1,5,d),1-smooth(23,28,d)) : 0; }
+  const env = trackDef.environment;
+  const jumpLips=trackDef.jumpRatios.map(r=>length*r);
+  const ravineLipIndex = trackDef.hasRavine ? (trackDef.ravineJumpIndex ?? (trackDef.jumpRatios.indexOf(0.718) >= 0 ? trackDef.jumpRatios.indexOf(0.718) : 1)) : 0;
+  const ravineLip = trackDef.hasRavine ? jumpLips[ravineLipIndex] : 0;
+  function ramp(s:number) {
+    for(let i=0;i<jumpLips.length;i++){
+      const d=jumpLips[i]-s;
+      if(d>=0&&d<17){
+        const lift=trackDef.jumpLifts[i]||5.0;
+        return {height:(1-d/17)**1.7*lift,amount:1-d/17,lift};
+      }
+    }
+    return {height:0,amount:0,lift:0};
+  }
+  function ravine(s:number) {
+    if(!trackDef.hasRavine) return 0;
+    const d=s-ravineLip;return d>1&&d<28 ? 20*Math.min(smooth(1,5,d),1-smooth(23,28,d)) : 0;
+  }
   function nearest(x:number,z:number) {
     const bx=Math.floor(x/bucket),bz=Math.floor(z/bucket);let best=Infinity,index=0;
     for(let dz=-1;dz<=1;dz++)for(let dx=-1;dx<=1;dx++){const cell=grid.get(`${bx+dx},${bz+dz}`);if(!cell)continue;for(let j=0;j<cell.length;j++){const k=cell[j],p=centers[k],d=(x-p.x)**2+(z-p.z)**2;if(d<best){best=d;index=k;}}}
@@ -111,13 +322,13 @@ export function createWorld(materialFactory: MaterialFactory): World {
     const bed=THREE.MathUtils.lerp(a.y,b.y,t), bank=n.distance>5?Math.sin(Math.min((n.distance-5)/15,1)*Math.PI)*1.6:0;
     return THREE.MathUtils.lerp(bed+bank,raw,smooth(7,29,n.distance))+ramp(along).height*(1-smooth(5,11,n.distance))-ravine(along)*(1-smooth(13,29,n.distance));
   }
-  const sectionNames=['NEEDLE POINT','THE FALL LINE','CEDAR SWITCHBACKS','ROCK GARDEN','SKY TABLE','RAZOR RIDGE','THE DIVIDE','RIVER RUN','HOME STRAIGHT'];
+  const sectionNames=trackDef.sectionNames;
   function sample(s:number,lateral=0):TrackSample {
     const clamped=THREE.MathUtils.clamp(s,0,length),f=clamped/ds,i=Math.min(count-1,Math.floor(f)),u=f-i;
     const position=centers[i].clone().lerp(centers[i+1],u),tangent=tangents[i].clone().lerp(tangents[i+1],u).normalize(),right=rights[i].clone().lerp(rights[i+1],u).normalize();
     position.addScaledVector(right,lateral);
     const j=ramp(clamped);position.y+=j.height-ravine(clamped);
-    if(j.amount>0){const lift=clamped<jumpLips[0]+1?4.5:6.5;tangent.y+=1.7*lift/17*j.amount**.7*Math.hypot(tangent.x,tangent.z);tangent.normalize();}
+    if(j.amount>0){const lift=j.lift||(clamped<jumpLips[0]+1?4.5:6.5);tangent.y+=1.7*lift/17*j.amount**.7*Math.hypot(tangent.x,tangent.z);tangent.normalize();}
     // A broad, gentle berm reads clearly without forcing every rider onto its crown.
     const turn=tangents[Math.min(count,i+7)].x-tangents[Math.max(0,i-7)].x;
     position.y+=Math.max(0,-Math.sign(turn)*lateral)*Math.min(Math.abs(turn)*.19,.08);
@@ -131,14 +342,14 @@ export function createWorld(materialFactory: MaterialFactory): World {
   const terrainMaterial=materialFactory(0xffffff,'terrain');
   const maskSize=2048,maskData=new Uint8Array(maskSize*maskSize);const texel=DOMAIN/maskSize;
   for(let i=0;i<=count;i++){
-    const s=i*ds;if(s>jumpLips[1]+1&&s<jumpLips[1]+28)continue;
+    const s=i*ds;if(trackDef.hasRavine&&s>ravineLip+1&&s<ravineLip+28)continue;
     const p=centers[i],cx=(p.x-MIN_X)/texel,cz=(p.z-MIN_Z)/texel,r=6.3/texel;
     for(let iz=Math.floor(cz-r);iz<=Math.ceil(cz+r);iz++)for(let ix=Math.floor(cx-r);ix<=Math.ceil(cx+r);ix++)
       if(ix>=0&&iz>=0&&ix<maskSize&&iz<maskSize&&(ix-cx)**2+(iz-cz)**2<r*r)maskData[iz*maskSize+ix]=255;
   }
   const trackMask=new THREE.DataTexture(maskData,maskSize,maskSize,THREE.RedFormat);trackMask.needsUpdate=true;
   if(terrainMaterial instanceof THREE.ShaderMaterial){terrainMaterial.uniforms.uTrackMask.value=trackMask;terrainMaterial.uniforms.uMasked.value=1;terrainMaterial.uniforms.uTrackRegion.value.set(MIN_X,MIN_Z,DOMAIN,DOMAIN);}
-  const terrainColors=[new THREE.Color('#82a777'),new THREE.Color('#a8b87b'),new THREE.Color('#919e92'),new THREE.Color('#b8c398'),new THREE.Color('#f2e5c0')];
+  const terrainColors=env.terrainColors.map(c => new THREE.Color(c));
   type Ring={mesh:THREE.Mesh;positions:Float32Array;colors:Float32Array;local:Float32Array;spacing:number;cx:number;cz:number;target:THREE.BufferGeometry;heights:Float32Array};
   const rings:Ring[]=[];
   for(let level=0;level<8;level++) {
@@ -180,7 +391,7 @@ export function createWorld(materialFactory: MaterialFactory): World {
   rings.forEach(r=>{updateRing(r,0,0);r.mesh.geometry=r.target.clone();});
   let clipX=0,clipZ=0,pendingX=0,pendingZ=0,pendingRing=-1;
 
-  const dirt=materialFactory(0xc69d65,'dirt'),edge=materialFactory(0x8e9565,'rock'),worn=materialFactory(0xd8b780,'dirt');
+  const dirt=materialFactory(env.dirtColor,'dirt'),edge=materialFactory(env.edgeColor,'rock'),worn=materialFactory(env.wornColor,'dirt');
   function ribbon(offset:number,width:number,mat:THREE.Material,y=.08) {
     const vertices:number[]=[],indices:number[]=[],across=Math.max(1,Math.ceil(width/1.2)),stride=across+1;
     // Sampling across the section is essential: an apron made only from its
@@ -189,7 +400,7 @@ export function createWorld(materialFactory: MaterialFactory): World {
       const sm=sample(i*ds,offset-width/2+j/across*width);vertices.push(sm.position.x,sm.position.y+y,sm.position.z);
     }
     for(let i=0;i<count;i++){
-      const ss=(i+.5)*ds;if(ss>jumpLips[1]+1&&ss<jumpLips[1]+28)continue;
+      const ss=(i+.5)*ds;if(trackDef.hasRavine&&ss>ravineLip+1&&ss<ravineLip+28)continue;
       for(let j=0;j<across;j++){const a=i*stride+j,b=a+stride;indices.push(a,a+1,b,a+1,b+1,b);}
     }
     const geo=new THREE.BufferGeometry();geo.setAttribute('position',new THREE.Float32BufferAttribute(vertices,3));geo.setIndex(indices);geo.computeVertexNormals();const mesh=new THREE.Mesh(geo,mat);mesh.name='Hand-cut descent ribbon';group.add(mesh);return mesh;
@@ -202,7 +413,7 @@ export function createWorld(materialFactory: MaterialFactory): World {
   const dummy=new THREE.Object3D();
   for(let i=0;i<count;i+=7)for(const side of[-1,1]){if(markerIndex>=markers.count)continue;const p=sample(i*ds,side*4.05);dummy.position.copy(p.position);dummy.position.y+=.1;dummy.rotation.set(0,Math.atan2(-p.tangent.x,-p.tangent.z),0);dummy.scale.set(1,1,1);dummy.updateMatrix();markers.setMatrixAt(markerIndex++,dummy.matrix);}markers.count=markerIndex;group.add(markers);
 
-  const trunkMat=materialFactory(0x675845,'wood'),leafMat=materialFactory(0x587b68,'foliage'),leafLight=materialFactory(0x829769,'foliage'),rockMat=materialFactory(0x79848a,'rock');
+  const trunkMat=materialFactory(env.trunkColor,'wood'),leafMat=materialFactory(env.leafColor,'foliage'),leafLight=materialFactory(env.leafLightColor,'foliage'),rockMat=materialFactory(env.rockColor,'rock');
   // Chunking keeps instance culling useful: a distant grove is one draw call,
   // and camera-near foliage scales in continuously at the visibility boundary.
   const scenery:Array<{mesh:THREE.InstancedMesh;items:Array<{position:THREE.Vector3;scale:THREE.Vector3;angle:number}>;distance:number}>=[];
@@ -214,15 +425,28 @@ export function createWorld(materialFactory: MaterialFactory): World {
   const rockGeo=new THREE.IcosahedronGeometry(1,0);
   for(let chunk=0;chunk<12;chunk++){
     const trunks:Array<{position:THREE.Vector3;scale:THREE.Vector3;angle:number}>=[],leaves:typeof trunks=[],upper:typeof trunks=[],rocks:typeof trunks=[];
-    for(let i=0;i<145;i++){
-      const s=length*(chunk+random())/12,side=random()>.5?1:-1,lateral=side*(11+random()**1.3*120),p=sample(s,lateral).position;p.y=height(p.x,p.z);
+    let treeCount=0;
+    for(let attempt=0;attempt<240&&treeCount<145;attempt++){
+      const s=length*(chunk+random())/12,side=random()>.5?1:-1,lateral=side*(14+random()**1.3*120),p=sample(s,lateral).position;p.y=height(p.x,p.z);
       if(p.y>475&&random()>.4)continue;
       const h=7+random()*12,w=2.6+random()*3.5,angle=random()*6.28;
+      // Absolute guarantee: no tree trunk or branch can ever clip into the track or apron
+      const n=nearest(p.x,p.z);
+      if(n.distance<13.5+w)continue;
+      if(Math.abs(p.z-trackDef.riverZ)<16&&Math.abs(p.x)<480)continue;
       trunks.push({position:p.clone(),scale:new THREE.Vector3(1,h*.65,1),angle});
       leaves.push({position:p.clone().add(new THREE.Vector3(0,h*.25,0)),scale:new THREE.Vector3(w,h*.65,w),angle});
       upper.push({position:p.clone().add(new THREE.Vector3(0,h*.52,0)),scale:new THREE.Vector3(w*.72,h*.55,w*.72),angle:angle+.3});
+      treeCount++;
     }
-    for(let i=0;i<30;i++){const s=length*(chunk+random())/12,side=random()>.5?1:-1,p=sample(s,side*(6+random()*40)).position;p.y=height(p.x,p.z);const size=.6+random()*2.5;rocks.push({position:p,scale:new THREE.Vector3(size*1.4,size*.7,size),angle:random()*6.28});}
+    let rockCount=0;
+    for(let attempt=0;attempt<60&&rockCount<30;attempt++){
+      const s=length*(chunk+random())/12,side=random()>.5?1:-1,p=sample(s,side*(8+random()*40)).position;p.y=height(p.x,p.z);
+      const size=.6+random()*2.5;
+      if(nearest(p.x,p.z).distance<8.5+size)continue;
+      rocks.push({position:p,scale:new THREE.Vector3(size*1.4,size*.7,size),angle:random()*6.28});
+      rockCount++;
+    }
     instances(trunkGeo,trunkMat,trunks,650);instances(canopyGeo,leafMat,leaves,650);addOutline(instances(canopyGeo,leafLight,upper,650),.65);addOutline(instances(rockGeo,rockMat,rocks,430),.8);
   }
   const obstacles=Array.from({length:11},(_,i)=>({s:length*(.349+i*.0055),lateral:Math.sin(i*2.4)*2.6,radius:.38+(i%3)*.12}));
@@ -234,15 +458,15 @@ export function createWorld(materialFactory: MaterialFactory): World {
   const grassMat=materialFactory(0x6e8a57,'foliage');grassMat.side=THREE.DoubleSide;
   for(let chunk=0;chunk<8;chunk++){
     const grass:Array<{position:THREE.Vector3;scale:THREE.Vector3;angle:number}>=[];
-    for(let i=0;i<480;i++){const s=length*(chunk+random())/8,p=sample(s,(random()>.5?1:-1)*(6+random()*15)).position;p.y=height(p.x,p.z);const a=.6+random();grass.push({position:p,scale:new THREE.Vector3(a,a,a),angle:random()*6.28});}
+    for(let i=0;i<480;i++){const s=length*(chunk+random())/8,p=sample(s,(random()>.5?1:-1)*(6+random()*15)).position;p.y=height(p.x,p.z);if(nearest(p.x,p.z).distance<5.2)continue;const a=.6+random();grass.push({position:p,scale:new THREE.Vector3(a,a,a),angle:random()*6.28});}
     instances(grassGeo,grassMat,grass,200);
   }
-  const flowerGeo=new THREE.IcosahedronGeometry(.22,0),flowerMat=materialFactory(0xf4cb67,'foliage');
+  const flowerGeo=new THREE.IcosahedronGeometry(.22,0),flowerMat=materialFactory(env.flowerColor,'foliage');
   const flowers:Array<{position:THREE.Vector3;scale:THREE.Vector3;angle:number}>=[];
-  for(let i=0;i<360;i++){const p=sample(length*(.22+random()*.78),(random()>.5?1:-1)*(6+random()*13)).position;p.y=height(p.x,p.z)+.4;flowers.push({position:p,scale:new THREE.Vector3(1,1,1),angle:0});}instances(flowerGeo,flowerMat,flowers,150);
+  for(let i=0;i<360;i++){const p=sample(length*(.22+random()*.78),(random()>.5?1:-1)*(6+random()*13)).position;p.y=height(p.x,p.z)+.4;if(nearest(p.x,p.z).distance<5.2)continue;flowers.push({position:p,scale:new THREE.Vector3(1,1,1),angle:0});}instances(flowerGeo,flowerMat,flowers,150);
 
   // Composed paper ridges, deliberately stepped in palette and silhouette.
-  const ridgeColors=[0x668f88,0x8eaaa0,0xb6c3ac,0xd7d7b9];
+  const ridgeColors=env.ridgeColors;
   for(let layer=3;layer>=0;layer--){
     const vertices:number[]=[],indices:number[]=[],depth=-2250-layer*680;
     for(let i=0;i<=36;i++){const x=-5500+i/36*11000,y=180+layer*45+noise(i*.37,layer+8)*490+Math.max(0,Math.sin(i*1.3+layer))*200;vertices.push(x,-350,depth,x,y,depth);}
@@ -255,7 +479,7 @@ export function createWorld(materialFactory: MaterialFactory): World {
     for(const side of[-1,1]){const pole=new THREE.Mesh(new THREE.CylinderGeometry(.14,.22,h,6),gateMat);pole.position.set(side*w/2,h/2,0);g.add(pole);const cap=new THREE.Mesh(new THREE.ConeGeometry(.38,.8,5),gateGold);cap.position.set(side*w/2,h+.2,0);g.add(cap);}
     const panel=new THREE.Mesh(new THREE.BoxGeometry(w+.5,large?2:1.15,.16),gateMat);panel.position.y=h;g.add(panel);
     const face=new THREE.Mesh(new THREE.PlaneGeometry(w,large?1.75:1.04),flatMaterial(0xffffff,labelTexture(text,sub)));face.position.set(0,h,.095);g.add(face);group.add(g);}
-  gate(3,'SUNBREAK','SUMMIT / 2,410 M',true);gate(length-6,'FINISH','THE VALLEY IS YOURS',true);
+  gate(3,'SUNBREAK',`${trackDef.name} / ${Math.round(trackDef.elevationFn(0))} M`,true);gate(length-6,'FINISH','THE VALLEY IS YOURS',true);
   const checkpoints=[.2,.4,.6,.8].map(t=>t*length);checkpoints.forEach((s,i)=>gate(s,`0${i+1}`,sectionNames[Math.min(8,Math.floor((i+1)*1.8))]));
   // Take-off deck geometry and landing arrows make jump timing readable.
   jumpLips.forEach((s,index)=>{
@@ -263,12 +487,12 @@ export function createWorld(materialFactory: MaterialFactory): World {
     for(const side of[-1,1]){const post=new THREE.Mesh(new THREE.CylinderGeometry(.1,.15,3.2,5),gateMat);post.position.set(side*5.6,1.6,0);base.add(post);const flag=new THREE.Mesh(new THREE.PlaneGeometry(1.9,.8),flatMaterial(index?0xd86246:0xf4cb72));flag.position.set(side*4.8,2.8,0);base.add(flag);}group.add(base);
   });
   // Water is a solid cel tint with geometric glints, never a physical shader.
-  const stream=new THREE.Mesh(new THREE.PlaneGeometry(950,19),materialFactory(0x79b6b2,'water'));stream.rotation.x=-Math.PI/2;stream.position.set(0,10,-1740);group.add(stream);
-  const waterGlints=new THREE.InstancedMesh(new THREE.PlaneGeometry(5,.3),flatMaterial(0xe7e8bd),70);
-  for(let i=0;i<70;i++){dummy.position.set((random()-.5)*750,10.06,-1740+(random()-.5)*15);dummy.rotation.set(-Math.PI/2,0,0);dummy.scale.set(.5+random()*2,1,1);dummy.updateMatrix();waterGlints.setMatrixAt(i,dummy.matrix);}group.add(waterGlints);
+  const stream=new THREE.Mesh(new THREE.PlaneGeometry(950,19),materialFactory(env.riverColor,'water'));stream.rotation.x=-Math.PI/2;stream.position.set(0,10,trackDef.riverZ);group.add(stream);
+  const waterGlints=new THREE.InstancedMesh(new THREE.PlaneGeometry(5,.3),flatMaterial(env.waterGlintColor),70);
+  for(let i=0;i<70;i++){dummy.position.set((random()-.5)*750,10.12,trackDef.riverZ+(random()-.5)*15);dummy.rotation.set(-Math.PI/2,0,0);dummy.scale.set(.5+random()*2,1,1);dummy.updateMatrix();waterGlints.setMatrixAt(i,dummy.matrix);}group.add(waterGlints);
 
   let frame=0;
-  return {group,length,sample,height,checkpoints,obstacles,update(camera,dt){
+  return {group,length,sample,height,checkpoints,obstacles,trackId:trackDef.id,trackName:trackDef.name,trackSubtitle:trackDef.subtitle,environment:env,update(camera,dt){
     void dt;frame++;const x=camera.position.x,z=camera.position.z;
     // One bounded patch and one vegetation batch per frame avoids jump-time spikes.
     if(pendingRing<0){const nx=Math.round(x/16)*16,nz=Math.round(z/16)*16;if(nx!==clipX||nz!==clipZ){pendingX=nx;pendingZ=nz;pendingRing=0;}}

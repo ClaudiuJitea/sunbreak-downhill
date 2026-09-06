@@ -1,6 +1,7 @@
 import * as THREE from 'three';
-import { createRiderState, updatePhysics } from './physics';
+import { createRiderState, updatePhysics, crashRider, resetPhysics } from './physics';
 import type { InputState, PhysicsEvent, RiderState, World } from './types';
+import type { UpgradeMultipliers } from './garage';
 
 export type RacePhase = 'title' | 'countdown' | 'racing' | 'paused' | 'results';
 export interface GhostSample { s: number; lateral: number; time: number }
@@ -15,6 +16,7 @@ const formatTime = (time: number) => `${Math.floor(time / 60)}:${(time % 60).toF
 export class Race {
   readonly riders: RiderState[] = [];
   inputOverride?: (rider:RiderState,input:InputState,dt:number)=>void;
+  multipliers?: UpgradeMultipliers;
   phase: RacePhase = 'title';
   elapsed = 0;
   countdown = 3;
@@ -80,8 +82,12 @@ export class Race {
     this.phase = 'racing'; this.countdown = 0;
     this.checkpoint = this.world.checkpoints.filter(checkpoint => checkpoint <= s).length;
     this.recording = []; this.recordClock = 0; this.previousAirborne = false;
+    const defaultLaterals = [0, -1.8, 1.8, -1.8];
+    const sOffsets = [0, 18, -18, -36];
     for (const rider of this.riders) {
-      rider.s = clamp(s + (rider.id === 0 ? 0 : (2 - rider.id) * 4), 0, this.world.length - 1);
+      resetPhysics(rider);
+      rider.lateral = defaultLaterals[rider.id] ?? 0;
+      rider.s = clamp(s + (sOffsets[rider.id] ?? 0), 0, this.world.length - 1);
       rider.speed = 24; rider.y = 0; rider.vy = 0; rider.airborne = false;
       rider.airTime = 0; rider.crash = 0; rider.trick = ''; rider.trickRotation = 0;
       rider.finished = false; rider.finishTime = 0;
@@ -102,7 +108,7 @@ export class Race {
       return [];
     }
     this.elapsed += dt;
-    const events = updatePhysics(this.player, input, this.world, dt);
+    const events = updatePhysics(this.player, input, this.world, dt, this.multipliers);
     for (let i = 1; i < this.riders.length; i++) {
       const rider = this.riders[i];
       if (rider.finished) continue;
@@ -113,7 +119,7 @@ export class Race {
       const behind = this.player.s - rider.s;
       rider.speed = Math.max(0, rider.speed + clamp(behind / 75, -.7, 1.1) * dt);
     }
-    this.resolveContacts(dt);
+    this.resolveContacts(dt, events);
     for (const rider of this.riders) {
       if (!rider.finished && rider.s >= this.world.length - .15) {
         rider.finished = true; rider.finishTime = this.elapsed;
@@ -130,12 +136,25 @@ export class Race {
     this.wrongWay = this.player.speed > 1 && this.player.velocity.dot(this.world.sample(this.player.s).tangent) < -1;
     if (this.player.finished) {
       this.phase = 'results';
+      for (const rider of this.riders) {
+        if (!rider.finished) {
+          const remaining = Math.max(0, (this.world.length - .15) - rider.s);
+          rider.finishTime = this.elapsed + Math.max(.35, remaining / Math.max(14, rider.speed));
+          rider.finished = true;
+          rider.speed = Math.max(0, rider.speed * .5);
+        }
+      }
+      this.sortRiders();
       if (this.best === 0 || this.elapsed < this.best) {
         this.best = this.elapsed; this.ghost = this.recording.slice();
         this.ghostCheckpointTimes = this.checkpointTimes.slice();
         try {
-          localStorage.setItem(SAVE_KEY, JSON.stringify({ version: 1, time: this.best,
-            ghost: this.ghost, checkpoints: this.ghostCheckpointTimes }));
+          const trackId = this.world.trackId ?? 0;
+          const trackKey = `sunbreak.best.track_${trackId}.v1`;
+          const data = JSON.stringify({ version: 1, time: this.best,
+            ghost: this.ghost, checkpoints: this.ghostCheckpointTimes });
+          localStorage.setItem(trackKey, data);
+          if (trackId === 0) localStorage.setItem(SAVE_KEY, data);
         } catch { /* Racing remains available when browser storage is disabled. */ }
       }
     }
@@ -171,43 +190,82 @@ export class Race {
     lane += Math.sin(rider.s * (clean ? .016 : .055) + rider.id * 2) * (clean ? .18 : aggressive ? .42 : .82);
     lane -= clamp(ahead.curvature * 60, -.9, .9);
     for (const other of this.riders) {
-      if (other.id === rider.id || other.s < rider.s - .8 || other.s > rider.s + 7) continue;
-      if (Math.abs(other.lateral - rider.lateral) < 1.1) lane += rider.lateral > other.lateral ? 1.15 : -1.15;
+      if (other.id === rider.id || other.s < rider.s - .8 || other.s > rider.s + 14) continue;
+      if (Math.abs(other.lateral - rider.lateral) < 1.15) lane += rider.lateral >= other.lateral ? 1.3 : -1.3;
     }
     for(const rock of this.world.obstacles||[])if(rock.s>rider.s&&rock.s<rider.s+18&&Math.abs(lane-rock.lateral)<1)lane=rock.lateral+(lane>rock.lateral?1.5:-1.5);
     lane = clamp(lane, -sample.width * .34, sample.width * .34);
     input.steer = clamp((lane - rider.lateral) * .9, -1, 1);
     const catchup=clamp((this.player.s-rider.s)/18,-2,6);
     const turnSpeed = clamp((clean ? 31 : aggressive ? 34 : 30) + catchup - Math.abs(ahead.curvature) * 155, 17, 38);
-    input.brake = rider.speed > turnSpeed + (aggressive ? 3 : 0);
+    const aheadRider = this.riders.find(o => o.id !== rider.id && o.s > rider.s && o.s < rider.s + 5.5 && Math.abs(o.lateral - rider.lateral) < 0.65);
+    input.brake = rider.speed > turnSpeed + (aggressive ? 3 : 0) || (aheadRider !== undefined && aheadRider.speed < rider.speed);
     input.pedal = !input.brake && (clean || aggressive || Math.sin(this.elapsed * .8) > -.4);
     input.boost = rider.boost > .25 && rider.s < this.player.s + 15 && Math.abs(ahead.curvature) < .02 && !rider.airborne;
     input.manual = false; input.hop = false;
     input.crouch = sample.jump > (clean ? .52 : .30);
     if (rider.id === 3 && sample.jump > .77) input.crouch = false;
-    input.trick = rider.airborne && rider.airTime > (aggressive ? .16 : .3)
-      ? aggressive ? 6 : clean ? 2 : 1 : 0;
+    const isBigAir = sample.jump > 0.35 || rider.airTime > (aggressive ? 0.15 : 0.28);
+    if (rider.airborne && isBigAir) {
+      if (aggressive) {
+        // Kai: huge showman - Superman (3), Backflip (9), 360 Spin (8), Suicide No-Hander (5)
+        const tricks = [3, 9, 8, 5];
+        input.trick = tricks[Math.floor((rider.s + rider.id * 23) / 75) % tricks.length];
+      } else if (clean) {
+        // Jun: tech precision - Tabletop (1), X-Up (2), Nac-Nac (6), Tailwhip (7)
+        const tricks = [1, 2, 6, 7];
+        input.trick = tricks[Math.floor((rider.s + rider.id * 17) / 80) % tricks.length];
+      } else {
+        // Niko: freeride style - Can-Can (4), Superman (3), Tabletop (1), 360 (8)
+        const tricks = [4, 3, 1, 8];
+        input.trick = tricks[Math.floor((rider.s + rider.id * 29) / 70) % tricks.length];
+      }
+    } else if (!rider.airborne) {
+      input.trick = 0;
+    }
     this.aiMistakeClock[index] -= dt;
     // Occasional misplaced hops cost speed through the same landing-angle rules.
     if (!clean && this.aiMistakeClock[index] <= 0 && !rider.airborne && rider.speed > 15) {
       input.hop = true; this.aiHops[index] = true;
       this.aiMistakeClock[index] = aggressive ? 24 : 17;
     }
-    if (this.aiHops[index] && rider.airborne) input.trick = aggressive ? 7 : 6;
+    if (this.aiHops[index] && rider.airborne) input.trick = aggressive ? 9 : 3;
     if (!rider.airborne && rider.airTime === 0 && !input.hop) this.aiHops[index] = false;
   }
 
-  private resolveContacts(dt: number): void {
+  private resolveContacts(dt: number, events: PhysicsEvent[]): void {
     for (let a = 0; a < 4; a++) for (let b = a + 1; b < 4; b++) {
       const one = this.riders[a], two = this.riders[b];
       if (one.crash > 0 || two.crash > 0 || Math.abs(one.s - two.s) > 2.0 || Math.abs(one.position.y - two.position.y) > 1.3) continue;
       const distance = one.lateral - two.lateral;
-      if (Math.abs(distance) < 1.05) {
-        const push = (distance >= 0 ? 1 : -1) * (1.05 - Math.abs(distance)) * .5;
-        one.lateral += push; two.lateral -= push;
-        const mean = (one.speed + two.speed) * .5;
-        one.speed += (mean - one.speed) * dt * 3;
-        two.speed += (mean - two.speed) * dt * 3;
+      const absDist = Math.abs(distance);
+      const sDist = Math.abs(one.s - two.s);
+      if (absDist < 1.05) {
+        const relSpeed = Math.abs(one.speed - two.speed);
+        const maxSpeed = Math.max(one.speed, two.speed);
+        const isAirCollision = (one.airborne || two.airborne) && (absDist < 0.65 || sDist < 1.2);
+        const isDirectHit = absDist < 0.46 && (maxSpeed > 12 || relSpeed > 3.5);
+        const isRamHit = sDist < 0.8 && absDist < 0.50 && relSpeed > 4.0;
+        const isHardTouch = isDirectHit || isRamHit || isAirCollision;
+
+        if (isHardTouch) {
+          const susp1 = one.id === 0 ? (this.multipliers?.suspensionDamp ?? 1) : 1;
+          const susp2 = two.id === 0 ? (this.multipliers?.suspensionDamp ?? 1) : 1;
+          const dir1 = distance >= 0 ? 1 : -1;
+          const dir2 = -dir1;
+          const ev1 = crashRider(one, dir1, susp1);
+          const ev2 = crashRider(two, dir2, susp2);
+          if (one.id === 0) events.push(ev1);
+          if (two.id === 0) events.push(ev2);
+          one.lateral += dir1 * 0.75;
+          two.lateral += dir2 * 0.75;
+        } else {
+          const push = (distance >= 0 ? 1 : -1) * (1.05 - absDist) * .5;
+          one.lateral += push; two.lateral -= push;
+          const mean = (one.speed + two.speed) * .5;
+          one.speed += (mean - one.speed) * dt * 3;
+          two.speed += (mean - two.speed) * dt * 3;
+        }
       }
     }
   }
@@ -240,7 +298,10 @@ export class Race {
 
   private loadBest(): void {
     try {
-      const raw = localStorage.getItem(SAVE_KEY);
+      const trackId = this.world.trackId ?? 0;
+      const trackKey = `sunbreak.best.track_${trackId}.v1`;
+      let raw = localStorage.getItem(trackKey);
+      if (!raw && trackId === 0) raw = localStorage.getItem(SAVE_KEY);
       if (!raw) return;
       const saved = JSON.parse(raw);
       if (saved.version !== 1 || !Number.isFinite(saved.time) || saved.time <= 0 || !Array.isArray(saved.ghost)) return;

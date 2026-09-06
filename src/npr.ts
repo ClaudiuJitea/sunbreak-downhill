@@ -180,13 +180,14 @@ uniform vec2 uResolution;
 uniform mat4 uInverseProjection,uCameraWorld;
 uniform float uTime,uSpeed,uBoost,uImpact;
 uniform vec3 uSun;
+uniform vec3 uSkyHorizon, uSkyZenith;
 layout(location=0) out vec4 outColor;
 float hash(float p){return fract(sin(p*127.1)*43758.5453);}
 vec3 sky(vec2 uv){
   vec4 viewRay=uInverseProjection*vec4(uv*2.0-1.0,1.0,1.0);
   vec3 ray=normalize(mat3(uCameraWorld)*viewRay.xyz);
   float h=clamp(ray.y*1.45+0.12,0.0,1.0);
-  vec3 col=mix(vec3(0.91,0.81,0.59),vec3(0.31,0.62,0.66),smoothstep(0.0,0.8,h));
+  vec3 col=mix(uSkyHorizon,uSkyZenith,smoothstep(0.0,0.8,h));
   vec3 sun=uSun;
   float sd=dot(ray,sun);
   col=mix(col,vec3(1.0,0.93,0.66),step(0.9975,sd));
@@ -291,9 +292,15 @@ export class NPRPipeline {
     this.target.textures[0].name='Cel colour';this.target.textures[1].name='Normal + linear depth';
     this.post=new THREE.ShaderMaterial({glslVersion:THREE.GLSL3,vertexShader:postVertex,fragmentShader:postFragment,depthTest:false,depthWrite:false,
       uniforms:{uScene:{value:this.target.textures[0]},uGeometry:{value:this.target.textures[1]},uLut:{value:makeLut()},uResolution:globalUniforms.uViewport,
-        uSun:globalUniforms.uSun,uEffects:{value:1},uRain:{value:0},uWetness:{value:0},uFocusDistance:{value:10},uFocusUv:{value:new THREE.Vector2(.5,.4)},uCinematic:{value:0},uSunScreen:{value:new THREE.Vector3()},uProjection:{value:camera.projectionMatrix},uInverseProjection:{value:camera.projectionMatrixInverse},uCameraWorld:{value:camera.matrixWorld},uTime:{value:0},uSpeed:{value:0},uBoost:{value:0},uImpact:{value:0}}});
+        uSun:globalUniforms.uSun,uSkyHorizon:{value:new THREE.Color('#e8cf97')},uSkyZenith:{value:new THREE.Color('#4e9fb0')},uEffects:{value:1},uRain:{value:0},uWetness:{value:0},uFocusDistance:{value:10},uFocusUv:{value:new THREE.Vector2(.5,.4)},uCinematic:{value:0},uSunScreen:{value:new THREE.Vector3()},uProjection:{value:camera.projectionMatrix},uInverseProjection:{value:camera.projectionMatrixInverse},uCameraWorld:{value:camera.matrixWorld},uTime:{value:0},uSpeed:{value:0},uBoost:{value:0},uImpact:{value:0}}});
     const quad=new THREE.Mesh(new THREE.PlaneGeometry(2,2),this.post);quad.frustumCulled=false;this.postScene.add(quad);
     this.renderer.setClearColor(0x000000,0);this.scene.background=null;
+  }
+  setEnvironment(env?: { skyHorizon: string; skyZenith: string; fogColor: string }): void {
+    if (!env) return;
+    globalUniforms.uFog.value.set(env.fogColor);
+    this.post.uniforms.uSkyHorizon.value.set(env.skyHorizon);
+    this.post.uniforms.uSkyZenith.value.set(env.skyZenith);
   }
   resize(w:number,h:number,dpr:number){
     const width=Math.max(1,Math.round(w*dpr)),height=Math.max(1,Math.round(h*dpr));

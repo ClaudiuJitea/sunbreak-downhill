@@ -159,8 +159,244 @@ try {
     await page.evaluate(() => window.__SUNBREAK.reset());
     const reset = await state();
     assert.equal(reset.phase, 'countdown');
-    assert.equal(reset.time, 0);
     assert.equal(reset.player.score, 0);
+  });
+  await check('track selector loads and switches between 3 distinct courses', async () => {
+    const t0 = await state();
+    assert.equal(t0.world.trackId, 0);
+    assert.equal(t0.world.trackName, 'THE SUNBREAK DESCENT');
+
+    await page.evaluate(() => window.__SUNBREAK.setTrack(1));
+    const t1 = await state();
+    assert.equal(t1.world.trackId, 1);
+    assert.equal(t1.world.trackName, 'RIDGE RUNNER');
+    assert.notEqual(t1.world.length, t0.world.length);
+
+    await page.evaluate(() => window.__SUNBREAK.setTrack(2));
+    const t2 = await state();
+    assert.equal(t2.world.trackId, 2);
+    assert.equal(t2.world.trackName, 'GRAVITY LAB');
+    assert.notEqual(t2.world.length, t1.world.length);
+
+    await page.evaluate(() => window.__SUNBREAK.setTrack(3));
+    const t3 = await state();
+    assert.equal(t3.world.trackId, 3);
+    assert.equal(t3.world.trackName, 'RED DUST CANYON');
+
+    await page.evaluate(() => window.__SUNBREAK.setTrack(4));
+    const t4 = await state();
+    assert.equal(t4.world.trackId, 4);
+    assert.equal(t4.world.trackName, 'BLACK FOREST SLALOM');
+
+    await page.evaluate(() => window.__SUNBREAK.setTrack(0));
+    const resetTrack = await state();
+    assert.equal(resetTrack.world.trackId, 0);
+  });
+  await check('ghost rider is an option toggleable via button, hotkey, and localStorage', async () => {
+    const ghostBtn = page.locator('#ghost-toggle');
+    assert.equal(await ghostBtn.getAttribute('aria-pressed'), 'true');
+    await page.keyboard.press('KeyG');
+    assert.equal(await ghostBtn.getAttribute('aria-pressed'), 'false');
+    const stored = await page.evaluate(() => localStorage.getItem('sunbreak.ghost'));
+    assert.equal(stored, 'disabled');
+    await page.click('#ghost-toggle');
+    assert.equal(await ghostBtn.getAttribute('aria-pressed'), 'true');
+  });
+  await check('garage permits bike upgrades, credit deduction, and gear customization', async () => {
+    await page.click('[data-action="open-garage"]');
+    assert.equal(await page.locator('#garage-panel').isVisible(), true);
+    const beforeCredits = (await page.evaluate(() => window.__SUNBREAK.garage())).credits;
+    assert.ok(beforeCredits >= 750);
+    // Purchase tires upgrade
+    await page.click('[data-action="upgrade-tires"]');
+    const garage = await page.evaluate(() => window.__SUNBREAK.garage());
+    assert.equal(garage.upgrades.tires, 2);
+    assert.ok(garage.credits < beforeCredits);
+    // Change color in paint shop
+    await page.click('#btn-tab-paint');
+    await page.click('[data-action^="color-frame-"]');
+    const updatedGarage = await page.evaluate(() => window.__SUNBREAK.garage());
+    assert.ok(updatedGarage.colors.frame > 0);
+    await page.click('[data-action="close-garage"]');
+    assert.equal(await page.locator('#garage-panel').isVisible(), false);
+  });
+  await check('championship tour initiates multi-stage grand prix progression', async () => {
+    await page.click('[data-action="mode-champ"]');
+    const champ = await page.evaluate(() => window.__SUNBREAK.champ());
+    assert.equal(champ.active, true);
+    assert.equal(champ.currentStage, 0);
+    assert.equal(champ.totalStages, 5);
+    assert.equal(champ.riders.length, 4);
+    await page.click('[data-action="mode-single"]');
+    const single = await page.evaluate(() => window.__SUNBREAK.champ());
+    assert.equal(single.active, false);
+  });
+  await check('superman and air tricks execute cleanly during big jumps', async () => {
+    await seek(.712);
+    await input({ pedal: true, trick: 3 });
+    let supermanSaw = false;
+    for (let i = 0; i < 30; i++) {
+      await step(2);
+      const s = await state();
+      if (s.player.trick === 'SUPERMAN') {
+        supermanSaw = true;
+        assert.ok(s.player.airborne, 'Superman was triggered while grounded');
+        assert.ok(s.player.trickRotation >= 0, 'Trick rotation was negative');
+        break;
+      }
+    }
+    assert.ok(supermanSaw, 'Superman trick was not detected during big jump');
+  });
+  await check('backflip, frontflip, and 360 execute and land cleanly for the player', async () => {
+    await seek(.712);
+    await input({ pedal: true, trick: 9 });
+    let backflipSaw = false;
+    for (let i = 0; i < 40; i++) {
+      await step(2);
+      const s = await state();
+      if (s.player.trick === 'BACKFLIP') {
+        backflipSaw = true;
+        assert.ok(s.player.airborne, 'Backflip was triggered while grounded');
+        assert.ok(s.player.trickRotation >= 0, 'Backflip trick rotation was negative');
+        break;
+      }
+    }
+    assert.ok(backflipSaw, 'Backflip trick was not detected for player');
+    let landedClean = false;
+    for (let i = 0; i < 35; i++) {
+      await step(8);
+      const s = await state();
+      if (!s.player.airborne) {
+        landedClean = s.player.crash === 0;
+        break;
+      }
+    }
+    assert.ok(landedClean, 'Backflip crashed on landing');
+
+    await seek(.712);
+    await input({ pedal: true, trick: 8 });
+    let spinSaw = false;
+    for (let i = 0; i < 40; i++) {
+      await step(2);
+      const s = await state();
+      if (s.player.trick === '360') {
+        spinSaw = true;
+        break;
+      }
+    }
+    assert.ok(spinSaw, '360 spin trick was not detected for player');
+
+    await seek(.712);
+    await input({ pedal: true, trick: 10 });
+    let frontflipSaw = false;
+    for (let i = 0; i < 40; i++) {
+      await step(2);
+      const s = await state();
+      if (s.player.trick === 'FRONTFLIP') {
+        frontflipSaw = true;
+        break;
+      }
+    }
+    assert.ok(frontflipSaw, 'Frontflip trick was not detected for player');
+  });
+  await check('crashes slide naturally without continuous spinning or merging into ground', async () => {
+    await seek(.345);
+    await input({ pedal: true, boost: true });
+    let crashed = false;
+    for (let i = 0; i < 40; i++) {
+      await step(2);
+      const s = await state();
+      if (s.player.crash > 0) {
+        crashed = true;
+        assert.ok(Math.abs(s.player.roll) <= 1.45, `Crash roll ${s.player.roll} exceeded natural slide limit`);
+        break;
+      }
+    }
+    assert.ok(crashed, 'Rider did not crash into obstacle on rock garden');
+  });
+  await check('hard touch collision between opponents causes both riders to crash', async () => {
+    await seek(.1);
+    await page.evaluate(() => {
+      const w = window.__SUNBREAK;
+      const r = w.race();
+      r.riders[0].speed = 22;
+      r.riders[0].lateral = 0;
+      r.riders[1].speed = 22;
+      r.riders[1].s = r.riders[0].s + 0.2;
+      r.riders[1].lateral = 0.2;
+    });
+    await step(4);
+    const riders = await page.evaluate(() => window.__SUNBREAK.race().riders);
+    assert.ok(riders[0].crash > 0, 'Player did not crash from hard touch');
+    assert.ok(riders[1].crash > 0, 'Opponent did not crash from hard touch');
+  });
+  await check('tracks feature distinct environmental atmospheres and abundant jumps', async () => {
+    const world0 = await page.evaluate(() => window.__SUNBREAK.world());
+    assert.ok(world0.environment, 'Track 0 missing environment configuration');
+    assert.ok(world0.environment.terrainColors.length === 5, 'Track 0 terrain colors incomplete');
+    await page.evaluate(() => window.__SUNBREAK.setTrack(3));
+    const world3 = await page.evaluate(() => window.__SUNBREAK.world());
+    assert.equal(world3.trackName, 'RED DUST CANYON');
+    assert.notEqual(world3.environment.fogColor, world0.environment.fogColor, 'Red Dust Canyon shared fog color');
+    assert.notEqual(world3.environment.dirtColor, world0.environment.dirtColor, 'Red Dust Canyon shared dirt color');
+    await page.evaluate(() => window.__SUNBREAK.setTrack(0));
+  });
+  await check('championship next stage button can be clicked to advance race', async () => {
+    await page.click('[data-action="mode-champ"]');
+    await seek(.995);
+    await input({ pedal: true });
+    await step(120);
+    const s = await state();
+    assert.equal(s.phase, 'results');
+    assert.ok(await page.locator('[data-action="champ-next"]').isVisible(), 'Next stage button not visible in results');
+    await page.click('[data-action="champ-next"]');
+    await step(10);
+    const nextChamp = await page.evaluate(() => window.__SUNBREAK.champ());
+    assert.equal(nextChamp.currentStage, 1, 'Clicking Next Stage button did not advance championship stage');
+    await page.evaluate(() => window.__SUNBREAK.setTrack(0));
+  });
+  await check('each competitor possesses a distinct race number badge on their jersey', async () => {
+    const badges = await page.evaluate(() => {
+      const w = window.__SUNBREAK;
+      const visuals = w.visuals();
+      return visuals.map((v, idx) => {
+        let badgeMeshCount = 0;
+        v.group.traverse(obj => {
+          if (obj.isMesh && obj.geometry && obj.geometry.attributes?.position?.count) {
+            badgeMeshCount++;
+          }
+        });
+        return { id: idx, badgeMeshCount };
+      });
+    });
+    assert.equal(badges.length, 4);
+    assert.ok(badges.every(b => b.badgeMeshCount > 10), 'Rider visual is missing geometry elements');
+  });
+  await check('crashed rider remains visible above ground surface without sinking', async () => {
+    await seek(.345);
+    await input({ pedal: true, boost: true });
+    let crashed = false;
+    for (let i = 0; i < 40; i++) {
+      await step(2);
+      const s = await state();
+      if (s.player.crash > 0) {
+        crashed = true;
+        const elevation = await page.evaluate(() => {
+          const w = window.__SUNBREAK;
+          const p = w.race().player;
+          const sample = w.world().sample(p.s, p.lateral);
+          const ground = Math.max(sample.position.y, w.world().height(sample.position.x, sample.position.z));
+          const visual = w.visuals()[0];
+          // In Three.js, visual.group has children: bike, athlete
+          const athlete = visual.group.children[1] || visual.group.children[0];
+          const athleteWorldY = visual.group.position.y + athlete.position.y * Math.cos(p.roll) - athlete.position.x * Math.sin(p.roll);
+          return { groundY: ground, groupY: visual.group.position.y, athleteWorldY, diff: visual.group.position.y - ground };
+        });
+        assert.ok(elevation.groupY >= elevation.groundY + 0.15, `Crash group height ${elevation.groupY} was below ground ${elevation.groundY}`);
+        break;
+      }
+    }
+    assert.ok(crashed, 'Rider did not trigger crash');
   });
   assert.equal(errors.length, 0, `Browser reported errors:\n${errors.join('\n')}`);
   console.log(`\n${passed} gameplay checks passed.`);

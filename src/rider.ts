@@ -48,14 +48,52 @@ function solveJoint(root:THREE.Vector3,target:THREE.Vector3,pole:THREE.Vector3,a
   out.copy(root).addScaledVector(axis,along).addScaledVector(bend,height);
 }
 
-export function createRider(materialFactory:MaterialFactory,color:number):RiderVisual{
+function buildDigitGeometries(char:string,cx:number):THREE.BufferGeometry[]{
+  const parts:THREE.BufferGeometry[]=[];
+  const bar=(x:number,y:number,w:number,h:number)=>{
+    parts.push(transformed(box,v(x,y,0),v(w,h,.012)));
+  };
+  const W=.068,H=.150,T=.013,halfW=.028,halfH=.068,midH=.034;
+  switch(char){
+    case '0':
+      bar(cx-halfW,0,T,H);bar(cx+halfW,0,T,H);bar(cx,halfH,W,T);bar(cx,-halfH,W,T);break;
+    case '1':
+      bar(cx+.005,0,T,H);bar(cx-.012,halfH-.014,.022,T);bar(cx+.005,-halfH,.046,T);break;
+    case '2':
+      bar(cx,halfH,W,T);bar(cx+halfW,midH,T,halfH);bar(cx,0,W,T);bar(cx-halfW,-midH,T,halfH);bar(cx,-halfH,W,T);break;
+    case '3':
+      bar(cx,halfH,W,T);bar(cx-.004,0,W-.008,T);bar(cx,-halfH,W,T);bar(cx+halfW,0,T,H);break;
+    case '4':
+      bar(cx-halfW,midH,T,halfH);bar(cx,0,W,T);bar(cx+halfW,0,T,H);break;
+    case '5':
+      bar(cx,halfH,W,T);bar(cx-halfW,midH,T,halfH);bar(cx,0,W,T);bar(cx+halfW,-midH,T,halfH);bar(cx,-halfH,W,T);break;
+    case '6':
+      bar(cx,halfH,W,T);bar(cx-halfW,0,T,H);bar(cx,0,W,T);bar(cx+halfW,-midH,T,halfH);bar(cx,-halfH,W,T);break;
+    case '7':
+      bar(cx-.006,halfH,W+.012,T);bar(cx+halfW,0,T,H);break;
+    case '8':
+      bar(cx-halfW,0,T,H);bar(cx+halfW,0,T,H);bar(cx,halfH,W,T);bar(cx,0,W,T);bar(cx,-halfH,W,T);break;
+    case '9':
+      bar(cx-halfW,midH,T,halfH);bar(cx+halfW,0,T,H);bar(cx,halfH,W,T);bar(cx,0,W,T);bar(cx,-halfH,W,T);break;
+    default:
+      bar(cx,0,T,H);break;
+  }
+  return parts;
+}
+function buildBadgeGeometries(numStr:string):THREE.BufferGeometry[]{
+  const str=String(numStr).trim();
+  if(str.length===1)return buildDigitGeometries(str[0],0);
+  return [...buildDigitGeometries(str[0]||'0',-.062),...buildDigitGeometries(str[1]||'0',.058)];
+}
+
+export function createRider(materialFactory:MaterialFactory,color:number,customColors?:{frame?:number;jersey?:number;helmet?:number},riderNumber:string|number='07'):RiderVisual{
   const group=new THREE.Group();group.name='Athlete and BMX';
   const bike=new THREE.Group();group.add(bike);
-  const frameMat=materialFactory(color,'metal'),dark=materialFactory(0x172f37,'rubber');
-  const silver=materialFactory(0xc0c9b6,'metal'),kit=materialFactory(color,'cloth');
+  const frameMat=materialFactory(customColors?.frame ?? color,'metal'),dark=materialFactory(0x172f37,'rubber');
+  const silver=materialFactory(0xc0c9b6,'metal'),kit=materialFactory(customColors?.jersey ?? color,'cloth');
   const cream=materialFactory(0xf4ebc9,'cloth'),pants=materialFactory(0x233a47,'cloth');
   const skin=materialFactory(0xc38f65,'skin'),visorMat=materialFactory(0x12343e,'metal');
-  const accent=materialFactory(0xfbb64b,'helmet');
+  const accent=materialFactory(customColors?.helmet ?? 0xfbb64b,'helmet');
   const frame=new THREE.Group();bike.add(frame);
   const crankCenter=v(0,.44,.10),seat=v(0,.96,.32),neck=v(0,.92,-.44),lowerNeck=v(0,.73,-.50),rear=v(0,.36,.69);
   const frameParts:THREE.BufferGeometry[]=[];
@@ -103,8 +141,17 @@ export function createRider(materialFactory:MaterialFactory,color:number):RiderV
   const chest=ball(athlete,kit,v(),v(.225,.18,.14));
   const backPanel=block(athlete,cream,v(),v(.29,.28,.022));
   const badge=new THREE.Group();athlete.add(badge);
-  // Race number 07 is geometry, so it stays crisp without an external font/texture.
-  batch(badge,[transformed(box,v(-.055,0,0),v(.012,.15,.01)),transformed(box,v(-.115,0,0),v(.012,.15,.01)),transformed(box,v(-.085,.071,0),v(.072,.012,.01)),transformed(box,v(-.085,-.071,0),v(.072,.012,.01)),transformed(box,v(.025,.071,0),v(.10,.013,.01)),transformed(box,v(.065,0,0),v(.012,.15,.01))],pants);
+  let badgeMesh:THREE.Mesh|null=null;
+  function setBadgeNumber(num:string|number){
+    if(badgeMesh){
+      badge.remove(badgeMesh);
+      badgeMesh.geometry.dispose();
+      badgeMesh=null;
+    }
+    const geoms=buildBadgeGeometries(String(num));
+    if(geoms.length>0){badgeMesh=batch(badge,geoms,pants);}
+  }
+  setBadgeNumber(riderNumber);
   const neckMesh=bone(athlete,skin,.069);
   const head=new THREE.Group();athlete.add(head);
   head.scale.set(.79,.84,.82);
@@ -143,11 +190,29 @@ export function createRider(materialFactory:MaterialFactory,color:number):RiderV
   let wheelAngle=0;
   let lastSpeed=0,lastCadence=0,brakingWeight=0,pedalEffort=0,gaze=0;
   const localFeet=[v(),v()];
-  return {group,update(state:RiderState,sample:TrackSample,dt:number,time:number){
+  let crashClock=0;
+  return {
+    group,
+    setColors(c:{frame?:number;jersey?:number;helmet?:number}){
+      if(c.frame!==undefined&&(frameMat as any).uniforms?.uColor){
+        (frameMat as any).uniforms.uColor.value.setHex(c.frame);
+      }
+      if(c.jersey!==undefined&&(kit as any).uniforms?.uColor){
+        (kit as any).uniforms.uColor.value.setHex(c.jersey);
+      }
+      if(c.helmet!==undefined&&(accent as any).uniforms?.uColor){
+        (accent as any).uniforms.uColor.value.setHex(c.helmet);
+      }
+    },
+    setNumber(num:string|number){
+      setBadgeNumber(num);
+    },
+    update(state:RiderState,sample:TrackSample,dt:number,time:number){
     // The visible trail ribbon sits 10–11.5 cm above its physics sample. Match
     // that offset so tire contact is visible instead of buried in the ribbon.
     group.position.copy(state.position);group.position.y+=.14;
     group.rotation.set(state.pitch,state.yaw,state.roll,'YXZ');
+    if(state.crash>0){crashClock+=dt;}else{crashClock=0;}
     legCompression=THREE.MathUtils.damp(legCompression,state.compression,13,dt);
     spineCompression=THREE.MathUtils.damp(spineCompression,legCompression,8,dt);
     headCompression=THREE.MathUtils.damp(headCompression,spineCompression,6,dt);
@@ -157,14 +222,54 @@ export function createRider(materialFactory:MaterialFactory,color:number):RiderV
     pedalEffort=THREE.MathUtils.damp(pedalEffort,!state.airborne?Math.min(1,cadenceRate/7):0,7,dt);
     lastSpeed=state.speed;lastCadence=state.cadence;
     const c=legCompression,landing=spineCompression;
-    const pose=state.airborne?Math.sin(state.trickRotation*.5):0;
+    const rotProgress=THREE.MathUtils.clamp(state.trickRotation/(Math.PI*2),0,1);
+    const pose=state.airborne&&state.trick?(rotProgress<0.20?rotProgress/0.20:rotProgress>0.80?(1-rotProgress)/0.20:1.0):0;
     const superman=state.trick==='SUPERMAN'?pose:0;
+    const backflip=state.trick==='BACKFLIP'?pose:0;
+    const frontflip=state.trick==='FRONTFLIP'?pose:0;
+    const spin360=state.trick==='360'?pose:0;
     const tuck=state.trick==='BACKFLIP'||state.trick==='FRONTFLIP'?pose:0;
     const tail=state.trick==='TAILWHIP'?Math.sin(state.trickRotation)*.48:0;
-    bike.rotation.y=tail;
-    bike.position.y=-state.compression*.055;
-    steering.rotation.y=state.lean*.30+(state.trick==='X-UP'?pose*1.6:0);
-    wheelAngle-=state.speed*dt/.36;
+    const cancan=state.trick==='CAN-CAN'?pose:0;
+    const nohander=state.trick==='NO-HANDER'?pose:0;
+    const nacnac=state.trick==='NAC-NAC'?pose:0;
+    const tabletop=state.trick==='TABLETOP'?pose:0;
+    const crashAmt=state.crash>0?THREE.MathUtils.clamp(state.crash/0.8,0,1):0;
+    const sideDir=state.roll>0?1:-1;
+    if(crashAmt>0){
+      const t=crashClock;
+      const decay=Math.exp(-t*2.5);
+      const targetWx=-sideDir*Math.min(0.68,0.25+t*0.7);
+      const targetWy=-0.18+Math.abs(Math.sin(t*8))*0.05*decay;
+      const targetWz=Math.min(0.55,0.15+t*0.6);
+      const roll=state.roll;
+      const cosR=Math.cos(roll),sinR=Math.sin(roll);
+      const lx=targetWx*cosR+targetWy*sinR;
+      const ly=-targetWx*sinR+targetWy*cosR;
+      athlete.position.set(lx*crashAmt,ly*crashAmt,targetWz*crashAmt);
+
+      const targetRollWorld=-sideDir*1.42;
+      const targetAthleteRotZ=targetRollWorld-roll;
+      athlete.rotation.z=targetAthleteRotZ*crashAmt+Math.sin(t*10)*0.12*decay;
+      athlete.rotation.x=Math.sin(t*8)*0.18*decay;
+      athlete.rotation.y=-sideDir*0.30+Math.cos(t*6)*0.15*decay;
+
+      const bikeDecay=Math.exp(-t*3.0);
+      bike.position.x=sideDir*Math.min(0.25,t*0.6);
+      bike.position.y=-state.compression*.055-0.06;
+      bike.rotation.z=-sideDir*(0.20+Math.sin(t*12)*0.12*bikeDecay);
+      bike.rotation.y=sideDir*(0.35+Math.cos(t*8)*0.20*bikeDecay);
+      steering.rotation.y=sideDir*(1.10+Math.sin(t*16)*0.25*bikeDecay);
+    }else{
+      athlete.position.set(0,0,0);
+      athlete.rotation.set(0,0,0);
+      bike.position.x=0;
+      bike.position.y=-state.compression*.055;
+      bike.rotation.z=0;
+      bike.rotation.y=tail+(nacnac?pose*0.25:0);
+      steering.rotation.y=state.lean*.30+(state.trick==='X-UP'?pose*1.6:0)+(nacnac?pose*0.35:0);
+    }
+    wheelAngle-=state.speed*dt/.36*(crashAmt>0?0.2:1);
     wheels.forEach(w=>{w.rotation.x=wheelAngle;});
     wheels[0].rotation.y=steering.rotation.y*.60;
     wheels[0].position.y=.36+state.compression*.045;
@@ -175,15 +280,42 @@ export function createRider(materialFactory:MaterialFactory,color:number):RiderV
       end.set(side*.17,.44+Math.sin(angle)*.145,.10+Math.cos(angle)*.145);
       pedals[i].position.copy(end);placeBone(crankArms[i],v(side*.13,.44,.10),end);
       localFeet[i].copy(end).add(v(0,.065,-.035)).applyAxisAngle(Y,tail);localFeet[i].y+=bike.position.y;
+      if (superman > 0) {
+        const feetBack = v(side * 0.08, 1.24, 1.54);
+        localFeet[i].lerp(feetBack, superman);
+      }
+      if (cancan > 0) {
+        const feetSide = v(0.50 + i * 0.14, 0.84, 0.08 + i * 0.10);
+        localFeet[i].lerp(feetSide, cancan);
+      }
+      if (nacnac > 0 && i === 1) {
+        const feetNac = v(-0.36, 0.74, 0.42);
+        localFeet[i].lerp(feetNac, nacnac);
+      }
+      if (crashAmt > 0) {
+        const t=crashClock, legDecay=Math.exp(-t*2.2);
+        const groundFoot=v(side*0.10,0.15+Math.sin(t*10)*0.08*legDecay,0.35);
+        const outerFoot=v(side*0.18,0.30+Math.sin(t*12)*0.12*legDecay,0.50);
+        localFeet[i].lerp(i===0?groundFoot:outerFoot,crashAmt);
+      }
     }
     // Sequential landing response: suspension, knees, pelvis/spine, then helmet.
     const roadBuzz=!state.airborne?Math.sin(state.s*2.1)*Math.min(.005,state.speed*.0002):0;
     const effort=Math.min(1,state.speed/22),pedalSway=Math.sin(state.cadence)*.016*pedalEffort;
     const breathing=Math.sin(time*2.0+state.id)*.004;
-    hip.set(-state.lean*.085+pedalSway,1.20-c*.24+tuck*.05+roadBuzz,.29+brakingWeight*.085+superman*.16-tuck*.10);
-    shoulderCenter.set(-state.lean*.12-pedalSway*.4,1.58-effort*.105-landing*.28-superman*.22+tuck*.02+breathing+brakingWeight*.045,-.23-effort*.07+brakingWeight*.065+superman*.055);
-    const crash=state.crash>0?Math.sin(time*15)*Math.min(1,state.crash):0;
-    hip.x+=crash*.08;shoulderCenter.x-=crash*.10;
+    hip.set(-state.lean*.085+pedalSway,1.20-c*.24-backflip*.16+frontflip*.12+roadBuzz,.29+brakingWeight*.085+superman*.35+backflip*.14-frontflip*.20-nohander*.10);
+    shoulderCenter.set(-state.lean*.12-pedalSway*.4,1.58-effort*.105-landing*.28-superman*.44-backflip*.14-frontflip*.12+breathing+brakingWeight*.045,-.23-effort*.07+brakingWeight*.065+superman*.12+backflip*.18-frontflip*.24);
+    if (tabletop > 0) {
+      hip.x += pose * 0.28;
+      shoulderCenter.x += pose * 0.42;
+    }
+    if (crashAmt > 0) {
+      const t=crashClock, flail=Math.exp(-t*2.5);
+      const crashHip=v(0,0.72+Math.abs(Math.sin(t*8))*0.08*flail,0.15);
+      const crashShoulder=v(0,1.32+Math.abs(Math.sin(t*7))*0.10*flail,-0.08);
+      hip.lerp(crashHip,crashAmt);
+      shoulderCenter.lerp(crashShoulder,crashAmt);
+    }
     pelvis.position.copy(hip);pelvis.rotation.z=state.lean*.2;
     placeBone(torso,hip,shoulderCenter,.204);torso.scale.z*=.77;
     chest.position.copy(shoulderCenter).lerp(hip,.23);chest.quaternion.copy(torso.quaternion);
@@ -193,16 +325,59 @@ export function createRider(materialFactory:MaterialFactory,color:number):RiderV
     placeBone(neckMesh,shoulderCenter,headBase);
     head.position.copy(headBase).add(v(0,.10,-.055));
     gaze=THREE.MathUtils.damp(gaze,THREE.MathUtils.clamp(-sample.curvature*60-state.lean*.17,-.42,.42),6,dt);
-    head.rotation.set(-.06-state.pitch*.30+(landing-headCompression)*.22,gaze,-state.roll*.30);
+    const crashHead = crashAmt > 0 ? Math.sin(crashClock * 10) * 0.20 * Math.exp(-crashClock * 2.5) : 0;
+    const crashHeadRoll = crashAmt > 0 ? -sideDir * 0.25 * crashAmt : 0;
+    const flipHead = state.trick === 'BACKFLIP' ? (0.75 * backflip + state.pitch * 0.30) : (frontflip > 0 ? -0.45 * frontflip : 0);
+    head.rotation.set(-.06 - state.pitch * .30 + flipHead + (landing - headCompression) * .22 + (superman > 0 ? 0.68 * superman : 0) + crashHead, gaze + (spin360 > 0 ? Math.sin(state.trickRotation) * 0.50 : 0) + (crashAmt > 0 ? sideDir * 0.20 : 0), -state.roll * .30 + crashHeadRoll);
     for(let i=0;i<2;i++){
       const l=limbs[i],side=l.side;
       // Bar endpoints account for the steering and frame's trick articulation.
       end.set(side*.365,.17,-.10).applyAxisAngle(Y,steering.rotation.y).add(steering.position).applyAxisAngle(Y,tail);end.y+=bike.position.y;
+      if (nohander > 0) {
+        const wingHand = v(side * 0.66, 1.36, 0.24);
+        end.lerp(wingHand, nohander);
+      }
+      if (crashAmt > 0) {
+        const t=crashClock, armDecay=Math.exp(-t*2.4);
+        const braceArm=v(side*0.30,0.95+Math.sin(t*8)*0.08*armDecay,-0.22);
+        const flailArm=v(side*0.36,1.35+Math.sin(t*11)*0.15*armDecay,0.08);
+        const crashHand=side===-sideDir?braceArm:flailArm;
+        end.lerp(crashHand,crashAmt);
+      }
       a.copy(shoulderCenter).add(v(side*.195,-.025,.015));l.shoulder.position.copy(a);pole.set(side*.49,1.30-landing*.15,.02);
+      if (superman > 0) {
+        pole.set(side * 0.28, 1.20, -0.22);
+      }
+      if (backflip > 0) {
+        pole.set(side * 0.44, 1.44, 0.12);
+      }
+      if (frontflip > 0) {
+        pole.set(side * 0.32, 1.18, -0.25);
+      }
+      if (crashAmt > 0) {
+        pole.set(side * 0.38, side === -sideDir ? 0.90 : 1.35, -0.15);
+      }
       solveJoint(a,end,pole,.365,.365,joint);placeBone(l.upperArm,a,joint);placeBone(l.forearm,joint,end);l.elbow.position.copy(joint);l.glove.position.copy(end);
       a.copy(hip).add(v(side*.13,-.02,0));end.copy(localFeet[i]);pole.set(side*(.26+pose*.065),.78-c*.10,-.34-superman*.15);
+      if (superman > 0) {
+        pole.set(side * 0.08, 1.12, 1.09);
+      }
+      if (backflip > 0) {
+        pole.set(side * 0.14, 0.94, 0.20);
+      }
+      if (frontflip > 0) {
+        pole.set(side * 0.14, 0.88, -0.15);
+      }
+      if (nohander > 0) {
+        pole.set(side * 0.08, 0.82, -0.15);
+      }
+      if (crashAmt > 0) {
+        pole.set(side * 0.28, 0.45, -0.12);
+      }
       solveJoint(a,end,pole,.47,.46,joint);placeBone(l.thigh,a,joint);placeBone(l.shin,joint,end);l.knee.position.copy(joint);
-      l.shoe.position.copy(end).add(v(0,.012,-.045));l.shoe.rotation.set(-.08,tail,0);
+      l.shoe.position.copy(end).add(v(0,.012,-.045));
+      const shoeTail = cancan > 0 ? 0.3 : nacnac > 0 && i === 1 ? -0.4 : tail;
+      l.shoe.rotation.set(-.08 + (superman > 0 ? 1.45 * superman : 0) + (crashAmt > 0 ? 0.45 * crashAmt : 0), shoeTail, 0);
     }
   }};
 }

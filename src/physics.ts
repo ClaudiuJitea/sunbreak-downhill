@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import type { InputState, PhysicsEvent, RiderState, World } from './types';
+import type { UpgradeMultipliers } from './garage';
 
 /** The track coordinates constrain the race to a readable downhill corridor, while
  * wheel height probes and a world-space airborne integrator provide its weight. */
@@ -21,9 +22,9 @@ interface Dynamics {
 }
 
 const dynamics = new WeakMap<RiderState, Dynamics>();
-const trickNames = ['', 'TABLETOP', 'X-UP', 'SUPERMAN', 'TAILWHIP', '360', 'BACKFLIP', 'FRONTFLIP'];
-const trickScores = [0, 180, 150, 300, 350, 400, 500, 550];
-const trickDurations = [0, .85, .7, 1.0, .95, 1.08, 1.1, 1.08];
+const trickNames = ['', 'TABLETOP', 'X-UP', 'SUPERMAN', 'CAN-CAN', 'NO-HANDER', 'NAC-NAC', 'TAILWHIP', '360', 'BACKFLIP', 'FRONTFLIP'];
+const trickScores = [0, 180, 150, 320, 280, 340, 260, 360, 420, 500, 550];
+const trickDurations = [0, .80, .70, .85, .80, .82, .78, .82, .76, .72, .72];
 const grip = { rock: .80, dirt: 1, grass: .67, scree: .62 };
 const TAU = Math.PI * 2;
 const clamp = THREE.MathUtils.clamp;
@@ -43,6 +44,19 @@ function memory(state: RiderState): Dynamics {
 
 export function resetPhysics(state:RiderState):void { dynamics.delete(state); }
 
+export function crashRider(state: RiderState, direction = 1, suspDamp = 1): PhysicsEvent {
+  const m = memory(state);
+  state.crash = 1.45 / suspDamp;
+  state.speed = Math.min(state.speed * 0.35, 5);
+  state.compression = 0.85;
+  state.trick = '';
+  state.trickRotation = 0;
+  m.recoveryTime = 0;
+  m.crashDirection = direction;
+  m.cooldown = 0.8;
+  return { type: 'crash', force: 19 };
+}
+
 export function createRiderState(id: number, name: string, color: number): RiderState {
   return { id, name, color, s: 0, lateral: 0, speed: 0, y: 0, vy: 0,
     airborne: false, airTime: 0, pitch: 0, roll: 0, yaw: 0, lean: 0,
@@ -51,7 +65,7 @@ export function createRiderState(id: number, name: string, color: number): Rider
     position: new THREE.Vector3(), velocity: new THREE.Vector3() };
 }
 
-export function updatePhysics(state: RiderState, input: InputState, world: World, dt: number): PhysicsEvent[] {
+export function updatePhysics(state: RiderState, input: InputState, world: World, dt: number, multipliers?: UpgradeMultipliers): PhysicsEvent[] {
   const events: PhysicsEvent[] = [];
   dt = clamp(dt, 0, 1 / 30);
   const m = memory(state);
@@ -77,11 +91,28 @@ export function updatePhysics(state: RiderState, input: InputState, world: World
     state.s = Math.min(world.length, state.s + state.speed * dt * .45);
     state.lateral += m.crashDirection * Math.exp(-m.recoveryTime * 4) * dt * 2;
     const hit = world.sample(state.s, state.lateral);
+    const ground = world.height(hit.position.x, hit.position.z);
+    const surfaceY = Math.max(hit.position.y, ground);
     state.position.copy(hit.position);
-    // A visible bounce and rolling momentum precede getting back on the pedals.
-    state.position.y += Math.abs(Math.sin(m.recoveryTime * 9)) * .6 * Math.exp(-m.recoveryTime * 2);
-    state.roll += m.crashDirection * state.crash * dt * 7;
-    state.pitch += dt * state.crash * 3;
+    // Keep bike and rider naturally resting on top of the terrain surface (clearance ~0.26m)
+    const bounce = Math.abs(Math.sin(m.recoveryTime * 8)) * 0.35 * Math.exp(-m.recoveryTime * 3);
+    state.position.y = surfaceY + 0.26 + bounce;
+    m.worldY = state.position.y;
+
+    // A natural slide-out: roll tilts to ~75 degrees on the fall side, then smoothly rights back up
+    const fallRollTarget = m.crashDirection * 1.32;
+    const recoveryFactor = clamp(state.crash / 0.5, 0, 1);
+    const targetRoll = fallRollTarget * recoveryFactor;
+    state.roll = damp(state.roll, targetRoll, 8, dt);
+
+    // Pitch follows the downhill slope of the ground so bike lies flush with terrain
+    const slopePitch = Math.atan(hit.slope);
+    state.pitch = damp(state.pitch, slopePitch, 6, dt);
+
+    // Yaw slews slightly in the slide direction
+    const baseYaw = Math.atan2(-hit.tangent.x, -hit.tangent.z);
+    state.yaw = damp(state.yaw, baseYaw + m.crashDirection * 0.25 * recoveryFactor, 5, dt);
+
     state.compression = .85;
     state.velocity.copy(hit.tangent).multiplyScalar(state.speed);
     if (state.crash === 0) {
@@ -94,21 +125,22 @@ export function updatePhysics(state: RiderState, input: InputState, world: World
     return events;
   }
 
-  const surfaceGrip = grip[before.surface];
+  const surfaceGrip = grip[before.surface] * (multipliers?.tiresGrip ?? 1);
   const boosting = input.boost && state.boost > .005;
   if (boosting) state.boost = Math.max(0, state.boost - dt * .18);
   else state.boost = Math.min(1, state.boost + dt * .009);
 
   // Gravity, rolling losses and aerodynamic drag share units of m/s².
   const downhill = clamp(-before.slope, -.8, .95);
-  const push = input.pedal ? 5.8 : 1.4;
+  const push = (input.pedal ? 5.8 : 1.4) * (multipliers?.drivetrainPush ?? 1);
   const rolling = before.surface === 'scree' ? 1.1 : .65;
   let acceleration = downhill * 17 + push + (boosting ? 11 : 0)
     - rolling - state.speed * state.speed * .0048;
   if (input.brake) acceleration -= 17 + state.speed * .19;
   if (Math.abs(state.lateral) > before.width * .48) acceleration -= 4.2;
   if (state.airborne) acceleration = (boosting ? 2 : 0) - state.speed * .018;
-  state.speed = clamp(state.speed + acceleration * dt, 0, boosting ? 43 : 35);
+  const maxSpeed = (boosting ? 43 : 35) * (multipliers?.topSpeed ?? 1);
+  state.speed = clamp(state.speed + acceleration * dt, 0, maxSpeed);
 
   const steer = clamp(input.steer, -1, 1);
   const slide = input.brake && state.speed > 12 ? .60 : 1;
@@ -130,19 +162,25 @@ export function updatePhysics(state: RiderState, input: InputState, world: World
     ? world.height(sample.position.x, sample.position.z) : sample.position.y;
   const front = world.sample(Math.min(world.length, state.s + .68), state.lateral);
   const rear = world.sample(Math.max(0, state.s - .68), state.lateral);
+  if (state.s + .68 > world.length) {
+    front.position.addScaledVector(front.tangent, state.s + .68 - world.length);
+  }
   // The two heightfield wheel contacts are the raycast vehicle's suspension probes.
   const wheelPitch = clamp(Math.atan2(front.position.y - rear.position.y, 1.36), -.75, .75);
   const baseYaw = Math.atan2(-sample.tangent.x, -sample.tangent.z);
   const release = m.wasCrouching && !input.crouch;
   if (input.crouch && !state.airborne) m.preload = Math.min(1, m.preload + dt * 2.6);
 
+  const hopMul = multipliers?.hopForce ?? 1;
   const crossedLip = before.jump > .62 && sample.jump < .2;
-  if (!state.airborne && m.cooldown === 0 && (crossedLip || input.hop || release)) {
-    const launch = crossedLip ? 6.8 : 4.2;
+  const groundTrick = !state.airborne && input.trick > 0 && !input.crouch && state.speed > 4.5;
+  if (!state.airborne && m.cooldown === 0 && (crossedLip || input.hop || release || groundTrick)) {
+    const isFlipOrSpin = input.trick === 8 || input.trick === 9 || input.trick === 10;
+    const launch = (crossedLip ? 6.8 : groundTrick ? (isFlipOrSpin ? 6.6 : 5.0) : 4.2) * hopMul;
     state.airborne = true;
     state.airTime = 0;
     state.vy = (crossedLip ? Math.max(-2, before.slope * state.speed) : before.slope * state.speed)
-      + launch + m.preload * 4.1;
+      + launch + m.preload * 4.1 * hopMul;
     m.worldY = Math.max(groundBefore, ground) + .04;
     state.y = Math.max(.04, m.worldY - ground);
     m.cooldown = .55;
@@ -161,10 +199,14 @@ export function updatePhysics(state: RiderState, input: InputState, world: World
     m.worldY += state.vy * dt;
     state.y = m.worldY - ground;
     targetCompression = .02;
-    const requestedTrick = clamp(Math.floor(input.trick), 0, 7);
-    if (requestedTrick > 0 && !m.trickId && state.airTime > .04) {
+    let requestedTrick = clamp(Math.floor(input.trick), 0, 10);
+    if (!requestedTrick && state.airborne && state.airTime > 0.08 && !m.trickId) {
+      if (input.brake && !input.pedal) requestedTrick = 9;
+    }
+    if (requestedTrick > 0 && !m.trickId && state.airTime > .01) {
       m.trickId = requestedTrick; m.trickTime = 0;
       state.trick = trickNames[requestedTrick];
+      events.push({ type: 'trick', force: 0, score: 0, name: state.trick });
     }
     if (m.trickId) {
       m.trickTime += dt;
@@ -172,28 +214,31 @@ export function updatePhysics(state: RiderState, input: InputState, world: World
       // Smooth rotations accelerate out of the pose and settle before touchdown.
       const smooth = progress * progress * (3 - 2 * progress);
       state.trickRotation = smooth * TAU;
-      if (progress >= 1 && m.pendingScore === 0) m.pendingScore = trickScores[m.trickId];
+      if (progress >= 0.35) {
+        m.pendingScore = Math.round(trickScores[m.trickId] * Math.min(1, progress * 1.25));
+      }
     }
     const trickAngle = state.trickRotation;
     const pose = Math.sin(Math.min(1, m.trickTime / (trickDurations[m.trickId] || 1)) * Math.PI);
     state.pitch = damp(state.pitch, wheelPitch, 2.5, dt);
-    state.roll = damp(state.roll, -steer * .32 + (m.trickId === 1 ? pose * 1.12 : 0), 6, dt);
+    state.roll = damp(state.roll, -steer * .32 + (m.trickId === 1 ? pose * 1.15 : 0), 6, dt);
     state.yaw = baseYaw;
-    if (m.trickId === 5) state.yaw += trickAngle;
+    if (m.trickId === 8) state.yaw += trickAngle;
     // Set absolute flip pitch so the damping cannot fight a completed rotation.
-    if (m.trickId === 6) state.pitch = wheelPitch + trickAngle;
-    if (m.trickId === 7) state.pitch = wheelPitch - trickAngle;
+    if (m.trickId === 9) state.pitch = wheelPitch + trickAngle;
+    if (m.trickId === 10) state.pitch = wheelPitch - trickAngle;
     if (state.y <= 0 && state.airTime > .10) {
       const impact = Math.max(0, -(state.vy - sample.slope * state.speed));
       const angleError = Math.abs(Math.atan2(Math.sin(state.pitch - wheelPitch), Math.cos(state.pitch - wheelPitch)));
       // Forgiving ordinary jumps; committing to half a flip has real consequences.
-      const badRotation = (m.trickId === 6 || m.trickId === 7) && angleError > 1.18;
+      const badRotation = (m.trickId === 9 || m.trickId === 10) && angleError > 1.18;
       state.airborne = false; state.y = 0; state.vy = 0; m.worldY = ground;
-      m.suspensionVelocity = Math.min(12, impact * .65);
+      const suspDamp = multipliers?.suspensionDamp ?? 1;
+      m.suspensionVelocity = Math.min(12, impact * .65 / suspDamp);
       state.compression = Math.min(.95, .2 + impact * .025);
       events.push({ type: 'land', force: impact });
-      if (badRotation || impact > 39) {
-        state.crash = 1.45; m.recoveryTime = 0;
+      if (badRotation || impact > 39 * suspDamp) {
+        state.crash = 1.45 / suspDamp; m.recoveryTime = 0;
         m.crashDirection = steer || (state.id % 2 ? -1 : 1);
         m.pendingScore = 0; state.trick = 'WIPEOUT';
         events.push({ type: 'crash', force: impact });
@@ -224,7 +269,7 @@ export function updatePhysics(state: RiderState, input: InputState, world: World
       const hard=state.speed>28&&Math.abs(state.lateral-rock.lateral)<rock.radius*.6;
       state.speed*=.73;state.compression=.85;m.suspensionVelocity=7;m.cooldown=.5;
       m.lateralVelocity+=(state.lateral>rock.lateral?1:-1)*2;events.push({type:'land',force:13});
-      if(hard){state.crash=1.45;m.recoveryTime=0;m.crashDirection=steer||1;events.push({type:'crash',force:19});}
+      if(hard){state.crash=1.45/(multipliers?.suspensionDamp??1);m.recoveryTime=0;m.crashDirection=steer||(state.id%2?-1:1);events.push({type:'crash',force:19});}
       break;
     }
   }
