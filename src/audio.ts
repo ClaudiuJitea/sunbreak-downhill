@@ -14,5 +14,8 @@ export class GameAudio {
   horn(go=false){this.tone(go?660:440,go?.55:.16,'square',.075);this.tone(go?990:660,go?.55:.16,'sine',.1);}
   impact(force:number){this.tone(90+force*4,.24,'triangle',Math.min(.4,force*.018),28);this.tone(650,.07,'sawtooth',.045,60);}
   bank(){this.tone(660,.12,'sine',.16);setTimeout(()=>this.tone(880,.2,'sine',.12),90);}
+  victory(){this.tone(523.25,.20,'triangle',.16);setTimeout(()=>this.tone(659.25,.20,'triangle',.18),120);setTimeout(()=>this.tone(783.99,.22,'triangle',.20),240);setTimeout(()=>{this.tone(1046.50,.65,'sine',.22);this.tone(1318.51,.65,'triangle',.14);this.tone(130.81,.55,'sine',.25,65.4);},380);}
+  podium(rank=2){this.tone(rank===2?659.25:587.33,.22,'sine',.18);setTimeout(()=>this.tone(783.99,.22,'sine',.18),130);setTimeout(()=>{this.tone(1046.50,.55,'sine',.20);this.tone(196.00,.45,'triangle',.18);},260);}
+  finishChime(){this.tone(523.25,.25,'sine',.18);setTimeout(()=>this.tone(783.99,.45,'sine',.20),140);}
   update(dt:number,speed:number,surface:string,airborne:boolean,pedaling:boolean){if(!this.context||!this.wind||!this.tire||!this.tireFilter)return;const t=this.context.currentTime;this.wind.gain.setTargetAtTime(Math.min(.65,speed/55),t,.15);this.tire.gain.setTargetAtTime(airborne?0:Math.min(.5,speed/50),t,.06);this.tireFilter.frequency.setTargetAtTime(surface==='rock'?850:surface==='scree'?1400:400,t,.1);this.clickClock+=dt*(pedaling?8:Math.max(2,speed*.7));if(this.clickClock>1){this.clickClock%=1;if(speed>1)this.tone(pedaling?1400:2200,.009,'square',.013);}}
 }

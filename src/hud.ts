@@ -14,6 +14,7 @@ export interface HudState {
   split: string;
   fps: number;
   replay: boolean;
+  celebration?: boolean;
   earnedCredits?: number;
   champActive?: boolean;
   champStage?: number;
@@ -44,7 +45,7 @@ export class HUD {
       <p>Four riders. Five courses. No second thoughts.</p>
       <div class="mode-selector">
         <button class="mode-btn active" data-action="mode-single">SINGLE DESCENT</button>
-        <button class="mode-btn" data-action="mode-champ">🏆 CHAMPIONSHIP TOUR</button>
+        <button class="mode-btn" data-action="mode-champ">CHAMPIONSHIP TOUR</button>
       </div>
       <div class="course-card" data-action="track" title="Click to cycle track (or press T)">
         <div class="course-number" id="course-number">01</div>
@@ -124,6 +125,27 @@ export class HUD {
       <button class="ride-btn" data-action="champ-restart" style="width:100%;">NEW CHAMPIONSHIP <span>↻</span></button>
       <button class="text-btn" data-action="close-champ" style="margin-top:15px;">RETURN TO TITLE ↗</button>
     </div>
+    <div id="finish-banner" class="finish-banner hidden">
+      <div class="finish-banner-inner" id="finish-banner-inner">
+        <div class="finish-trophy-badge" id="finish-trophy-badge" aria-label="Finish Position"></div>
+        <div class="finish-main-info">
+          <div class="finish-badge-tag" id="finish-badge-tag">VICTORY · 1ST PLACE</div>
+          <div class="finish-main-title" id="finish-main-title">YOU WON THE RACE!</div>
+          <div class="finish-stat-chips" id="finish-stat-chips"></div>
+        </div>
+        <div class="finish-actions" id="finish-actions">
+          <div class="finish-countdown-box">
+            <span>REPLAY IN <b id="finish-countdown-sec">4</b>s</span>
+            <div class="finish-progress-track"><div id="finish-progress-fill"></div></div>
+          </div>
+          <div class="finish-btn-row" id="finish-btn-row">
+            <button class="finish-skip-btn" data-action="skip-celebration">SKIP TO REPLAY <span>↗</span> <kbd>SPACE</kbd></button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div id="finish-confetti" class="finish-confetti hidden"></div>
+    <div id="screen-dim" class="screen-dim"></div>
     <div id="loading" class="loading"><span class="wordmark">SUNBREAK</span><p>CARVING THE MOUNTAIN…</p><div></div></div>`;
 
     const effectsBar = document.createElement('div');
@@ -268,9 +290,9 @@ export class HUD {
     const title = s.phase === 'title', result = s.phase === 'results';
     this.el('title-panel').classList.toggle('hidden', !title);
     this.el('title-bottom').classList.toggle('hidden', !title);
-    this.el('race-hud').classList.toggle('hidden', title || result || s.replay);
+    this.el('race-hud').classList.toggle('hidden', title || result || s.replay || !!s.celebration);
     this.el('pause-panel').classList.toggle('hidden', s.phase !== 'paused');
-    this.el('results-panel').classList.toggle('hidden', !result || s.replay);
+    this.el('results-panel').classList.toggle('hidden', !result || s.replay || !!s.celebration);
     this.el('replay-label').classList.toggle('hidden', !s.replay);
 
     const order = [...s.riders].sort((a, b) => b.s - a.s);
@@ -329,7 +351,7 @@ export class HUD {
       const actions = this.el('result-actions');
       if (s.champActive) {
         if (s.isFinalStage) {
-          actions.innerHTML = `<button class="ride-btn" data-action="champ-finish">VIEW TOUR CEREMONY <span>🏆</span></button>`;
+          actions.innerHTML = `<button class="ride-btn" data-action="champ-finish">VIEW TOUR CEREMONY <span>↗</span></button>`;
         } else {
           actions.innerHTML = `<button class="ride-btn" data-action="champ-next">NEXT STAGE 0${(s.champStage ?? 0) + 2} <span>↗</span><small>ENTER</small></button>`;
         }
@@ -363,10 +385,10 @@ export class HUD {
     this.el('corner-icon').textContent = ahead.jump > .1 ? '↟' : Math.abs(ahead.curvature) > .007 ? (ahead.curvature > 0 ? '↱' : '↰') : '↓';
     this.el('corner-label').textContent = ahead.jump > .1 ? 'GET READY TO FLY' : Math.abs(ahead.curvature) > .007 ? 'BRAKE · LEAN · RELEASE' : ahead.section.toUpperCase();
 
-    const progress = p.s / s.world.length;
+    const progress = Math.min(1, p.s / s.world.length);
     this.el('route-dot').setAttribute('cx', String(progress * 360));
     this.el('route-dot').setAttribute('cy', String(4 + progress * 46));
-    this.el('distance').textContent = `${(p.s / 1000).toFixed(2)} / ${(s.world.length / 1000).toFixed(2)} KM`;
+    this.el('distance').textContent = `${(Math.min(p.s, s.world.length) / 1000).toFixed(2)} / ${(s.world.length / 1000).toFixed(2)} KM`;
     this.el('checkpoint').textContent = `CHECKPOINT ${s.world.checkpoints.filter(c => p.s >= c).length} / ${s.world.checkpoints.length}`;
     this.el('countdown').textContent = s.phase === 'countdown' ? s.countdown > 0 ? String(Math.ceil(s.countdown)) : 'GO!' : '';
 
@@ -380,5 +402,119 @@ export class HUD {
           : p.airborne
             ? '<small>AIR TRICKS</small>9 / B BACKFLIP · 8 360 · 3 SUPERMAN · 0 FRONTFLIP · 1–7'
             : '';
+  }
+
+  showFinishBanner(data: {
+    rank: number;
+    time: number;
+    score: number;
+    earnedCredits?: number;
+    champActive?: boolean;
+    champStage?: number;
+    isFinalStage?: boolean;
+  }) {
+    const banner = this.el('finish-banner');
+    if (!banner) return;
+    const rank = data.rank;
+    const trophy = this.el('finish-trophy-badge');
+    const tag = this.el('finish-badge-tag');
+    const title = this.el('finish-main-title');
+    const chips = this.el('finish-stat-chips');
+    const btnRow = this.el('finish-btn-row');
+
+    banner.className = 'finish-banner ' + (rank === 1 ? 'winner' : rank === 2 ? 'second' : rank === 3 ? 'third' : 'placed');
+
+    if (trophy) {
+      const pLabel = rank === 1 ? 'P1' : rank === 2 ? 'P2' : rank === 3 ? 'P3' : `P${rank}`;
+      const subLabel = rank === 1 ? 'WIN' : rank <= 3 ? 'POD' : 'FIN';
+      trophy.innerHTML = `
+        <svg class="finish-rank-svg" viewBox="0 0 48 48" width="48" height="48" aria-hidden="true">
+          <polygon points="24,3 45,10 45,28 24,45 3,28 3,10" fill="currentColor" fill-opacity="0.18" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round"/>
+          <line x1="14" y1="27" x2="34" y2="27" stroke="currentColor" stroke-width="1" stroke-opacity="0.45"/>
+          <text x="24" y="23" text-anchor="middle" font-family="Arial Black, Impact, sans-serif" font-weight="900" font-size="16" fill="currentColor">${pLabel}</text>
+          <text x="24" y="37" text-anchor="middle" font-family="Arial, sans-serif" font-weight="800" font-size="7.5" letter-spacing="1.5" fill="#fff8e7">${subLabel}</text>
+        </svg>
+      `;
+    }
+
+    if (tag) {
+      tag.textContent = rank === 1
+        ? 'RACE WINNER · 1ST PLACE'
+        : rank === 2
+          ? 'PODIUM FINISH · 2ND PLACE'
+          : rank === 3
+            ? 'PODIUM FINISH · 3RD PLACE'
+            : `DESCENT COMPLETED · ${rank}TH PLACE`;
+    }
+
+    if (title) {
+      title.textContent = rank === 1
+        ? 'YOU WON THE RACE!'
+        : rank === 2
+          ? 'YOU FINISHED SECOND!'
+          : rank === 3
+            ? 'YOU FINISHED THIRD!'
+            : `YOU FINISHED ${rank === 4 ? 'FOURTH' : `${rank}TH`}`;
+    }
+
+    if (chips) {
+      chips.innerHTML = `
+        <div><span>TIME</span><b>${time(data.time)}</b></div>
+        <div><span>STYLE</span><b>${data.score} PTS</b></div>
+        ${data.earnedCredits ? `<div><span>PRIZE</span><b>+$${data.earnedCredits.toLocaleString()}</b></div>` : ''}
+      `;
+    }
+
+    if (btnRow) {
+      btnRow.innerHTML = `
+        <button class="finish-skip-btn" data-action="skip-celebration">SKIP TO REPLAY <span>↗</span> <kbd>SPACE</kbd></button>
+      `;
+    }
+
+    banner.classList.remove('hidden');
+    if (rank <= 3) {
+      this.spawnConfetti();
+    }
+  }
+
+  updateFinishBannerProgress(fraction: number, secondsLeft: number) {
+    const fill = document.getElementById('finish-progress-fill');
+    const sec = document.getElementById('finish-countdown-sec');
+    if (fill) fill.style.width = `${Math.max(0, Math.min(100, fraction * 100))}%`;
+    if (sec) sec.textContent = String(Math.max(1, Math.ceil(secondsLeft)));
+  }
+
+  hideFinishBanner() {
+    const banner = this.el('finish-banner');
+    if (banner) banner.classList.add('hidden');
+    const confetti = this.el('finish-confetti');
+    if (confetti) {
+      confetti.classList.add('hidden');
+      confetti.innerHTML = '';
+    }
+  }
+
+  setDimmed(dimmed: boolean) {
+    const dim = this.el('screen-dim');
+    if (dim) dim.classList.toggle('dimmed', dimmed);
+  }
+
+  private spawnConfetti() {
+    const container = this.el('finish-confetti');
+    if (!container) return;
+    container.innerHTML = '';
+    container.classList.remove('hidden');
+    const colors = ['#ffd700', '#e97843', '#ffebc7', '#25a18e', '#f43f5e', '#ffffff'];
+    for (let i = 0; i < 48; i++) {
+      const piece = document.createElement('div');
+      piece.className = 'confetti-piece';
+      const left = Math.random() * 100;
+      const delay = Math.random() * 1.8;
+      const duration = 2.2 + Math.random() * 1.8;
+      const size = 6 + Math.random() * 8;
+      const color = colors[Math.floor(Math.random() * colors.length)];
+      piece.style.cssText = `left:${left}vw;animation-delay:${delay}s;animation-duration:${duration}s;background:${color};width:${size}px;height:${size * (0.5 + Math.random() * 0.8)}px;transform:rotate(${Math.random() * 360}deg);`;
+      container.appendChild(piece);
+    }
   }
 }

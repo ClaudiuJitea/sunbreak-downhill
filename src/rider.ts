@@ -235,6 +235,9 @@ export function createRider(materialFactory:MaterialFactory,color:number,customC
     const nacnac=state.trick==='NAC-NAC'?pose:0;
     const tabletop=state.trick==='TABLETOP'?pose:0;
     const crashAmt=state.crash>0?THREE.MathUtils.clamp(state.crash/0.8,0,1):0;
+    const celebrate=THREE.MathUtils.clamp(state.celebrate??0,0,1);
+    const celRank=state.celebrateRank??1;
+    const isWinner=celRank===1;
     const sideDir=state.roll>0?1:-1;
     if(crashAmt>0){
       const t=crashClock;
@@ -276,7 +279,7 @@ export function createRider(materialFactory:MaterialFactory,color:number,customC
     for(let i=0;i<2;i++){
       const side=i===0?-1:1;
       placeBone(forkTubes[i],v(side*.095,.94-state.compression*.05,-.45),v(side*.095,wheels[0].position.y,-.69));
-      const angle=state.cadence+i*Math.PI;
+      const angle=(celebrate>0?Math.PI*0.5:state.cadence)+i*Math.PI;
       end.set(side*.17,.44+Math.sin(angle)*.145,.10+Math.cos(angle)*.145);
       pedals[i].position.copy(end);placeBone(crankArms[i],v(side*.13,.44,.10),end);
       localFeet[i].copy(end).add(v(0,.065,-.035)).applyAxisAngle(Y,tail);localFeet[i].y+=bike.position.y;
@@ -309,6 +312,12 @@ export function createRider(materialFactory:MaterialFactory,color:number,customC
       hip.x += pose * 0.28;
       shoulderCenter.x += pose * 0.42;
     }
+    if (celebrate > 0) {
+      const uprightHip = v(0, 1.25, 0.32);
+      const uprightShoulder = v(Math.sin(time * 2.5) * 0.015, 1.74 + Math.sin(time * 4.0) * 0.02, 0.06);
+      hip.lerp(uprightHip, celebrate);
+      shoulderCenter.lerp(uprightShoulder, celebrate);
+    }
     if (crashAmt > 0) {
       const t=crashClock, flail=Math.exp(-t*2.5);
       const crashHip=v(0,0.72+Math.abs(Math.sin(t*8))*0.08*flail,0.15);
@@ -328,7 +337,9 @@ export function createRider(materialFactory:MaterialFactory,color:number,customC
     const crashHead = crashAmt > 0 ? Math.sin(crashClock * 10) * 0.20 * Math.exp(-crashClock * 2.5) : 0;
     const crashHeadRoll = crashAmt > 0 ? -sideDir * 0.25 * crashAmt : 0;
     const flipHead = state.trick === 'BACKFLIP' ? (0.75 * backflip + state.pitch * 0.30) : (frontflip > 0 ? -0.45 * frontflip : 0);
-    head.rotation.set(-.06 - state.pitch * .30 + flipHead + (landing - headCompression) * .22 + (superman > 0 ? 0.68 * superman : 0) + crashHead, gaze + (spin360 > 0 ? Math.sin(state.trickRotation) * 0.50 : 0) + (crashAmt > 0 ? sideDir * 0.20 : 0), -state.roll * .30 + crashHeadRoll);
+    const celHeadTilt = celebrate * 0.22;
+    const celHeadTurn = celebrate * Math.sin(time * 2.5) * 0.12;
+    head.rotation.set(-.06 - state.pitch * .30 + flipHead + (landing - headCompression) * .22 + (superman > 0 ? 0.68 * superman : 0) + crashHead + celHeadTilt, gaze * (1 - celebrate) + (spin360 > 0 ? Math.sin(state.trickRotation) * 0.50 : 0) + (crashAmt > 0 ? sideDir * 0.20 : 0) + celHeadTurn, -state.roll * .30 + crashHeadRoll);
     for(let i=0;i<2;i++){
       const l=limbs[i],side=l.side;
       // Bar endpoints account for the steering and frame's trick articulation.
@@ -336,6 +347,13 @@ export function createRider(materialFactory:MaterialFactory,color:number,customC
       if (nohander > 0) {
         const wingHand = v(side * 0.66, 1.36, 0.24);
         end.lerp(wingHand, nohander);
+      }
+      if (celebrate > 0) {
+        const victoryHandY = isWinner
+          ? (2.16 + (side > 0 ? 0.06 : 0) + Math.sin(time * 5.0 + side * 0.6) * 0.035)
+          : (2.02 + Math.sin(time * 4.0 + side * 0.5) * 0.025);
+        const victoryHand = v(side * (isWinner ? 0.36 : 0.32), victoryHandY, isWinner ? 0.05 : 0.02);
+        end.lerp(victoryHand, celebrate);
       }
       if (crashAmt > 0) {
         const t=crashClock, armDecay=Math.exp(-t*2.4);
@@ -345,6 +363,10 @@ export function createRider(materialFactory:MaterialFactory,color:number,customC
         end.lerp(crashHand,crashAmt);
       }
       a.copy(shoulderCenter).add(v(side*.195,-.025,.015));l.shoulder.position.copy(a);pole.set(side*.49,1.30-landing*.15,.02);
+      if (celebrate > 0) {
+        const victoryPole = v(side * (isWinner ? 0.52 : 0.48), isWinner ? 1.78 : 1.66, -0.06);
+        pole.lerp(victoryPole, celebrate);
+      }
       if (superman > 0) {
         pole.set(side * 0.28, 1.20, -0.22);
       }

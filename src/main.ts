@@ -22,6 +22,8 @@ let champStageInfo:ReturnType<ChampionshipManager['recordStage']>|null=null;
 let race:Race, presentation:Presentation,pipeline:NPRPipeline,world:World,ghostVisual:ReturnType<typeof createRider>;
 let showcase:ShowcaseDirector|undefined;
 let replay=false,replayClock=0,replayIndex=0,autoReplay=false;
+let celebrationActive=false,celebrationClock=0,celebrationRank=1;
+const CELEBRATION_DURATION=4.2,DIM_LEAD_TIME=0.6;
 let impact=0,freeze=0,simTime=0,accumulator=0,lastTime=0,hudClock=0;
 let cameraMode:CameraMode='chase';
 let enhancedEffects=true,rainWeather=false,lensWetness=0;
@@ -54,7 +56,9 @@ function switchTrack(trackIndex:number){
   presentation=new Presentation(scene,camera,world,createMaterial);
   if(ghostVisual)ghostVisual.group.visible=false;
   if(ghostLabel)ghostLabel.style.display='none';
-  replay=false;autoReplay=false;biggestFrames=[];airFrames=[];replayFrames.length=0;
+  replay=false;autoReplay=false;celebrationActive=false;celebrationClock=0;
+  hud.hideFinishBanner();hud.setDimmed(false);
+  biggestFrames=[];airFrames=[];replayFrames.length=0;
   hud.update({
     phase:race.phase,player:race.player,riders:race.riders,time:race.elapsed,countdown:race.countdown,
     world,best:race.best,split:race.split,fps,replay,
@@ -127,9 +131,46 @@ function action(a:string){
     if(a==='digit5'){switchTrack(4);return;}
   }
   if(!race)return;
-  if(a==='start'||a==='restart'){void audio.activate();replay=false;autoReplay=false;biggestFrames=[];airFrames=[];replayFrames.length=0;tailRecord=0;lensWetness=0;race[a==='restart'?'reset':'start']();presentation.reset();audio.horn();}
-  if(a==='pause'){if(replay){replay=false;presentation.reset();return;}race.togglePause();}
-  if(a==='space'||a==='skip-replay'){if(replay){replay=false;presentation.reset();return;}}
+  if(a==='start'||a==='restart'){
+    void audio.activate();
+    replay=false;autoReplay=false;celebrationActive=false;celebrationClock=0;
+    hud.hideFinishBanner();hud.setDimmed(false);
+    race.player.celebrate=0;
+    biggestFrames=[];airFrames=[];replayFrames.length=0;tailRecord=0;lensWetness=0;
+    race[a==='restart'?'reset':'start']();presentation.reset();audio.horn();
+  }
+  if(a==='skip-celebration'||(celebrationActive&&(a==='space'||a==='start'))){
+    celebrationActive=false;
+    hud.hideFinishBanner();
+    hud.setDimmed(false);
+    autoReplay=true;
+    if(biggestFrames.length>5){
+      replay=true;replayClock=0;replayIndex=0;presentation.reset();audio.bank();
+    }else{
+      presentation.reset();
+    }
+    return;
+  }
+  if(a==='pause'){
+    if(replay){replay=false;presentation.reset();return;}
+    if(celebrationActive){celebrationActive=false;hud.hideFinishBanner();presentation.reset();return;}
+    race.togglePause();
+  }
+  if(a==='space'||a==='skip-replay'||a==='skip-celebration'){
+    if(celebrationActive){
+      celebrationActive=false;
+      hud.hideFinishBanner();
+      hud.setDimmed(false);
+      autoReplay=true;
+      if(biggestFrames.length>5&&!capture){
+        replay=true;replayClock=0;replayIndex=0;presentation.reset();audio.bank();
+      }else{
+        presentation.reset();
+      }
+      return;
+    }
+    if(replay){replay=false;presentation.reset();return;}
+  }
   if(a==='blur'&&!capture&&(race.phase==='racing'||race.phase==='countdown'))race.togglePause();
   if(a==='replay'&&biggestFrames.length){replay=true;replayClock=0;replayIndex=0;presentation.reset();}
 }
@@ -209,12 +250,9 @@ function tick(dt:number){
     if(wasAir&&!race.player.airborne)tailRecord=1.2;
   }
   if(prevPhase==='racing'&&race.phase==='results'&&!autoReplay&&!showcase){
-    autoReplay=true;
-    if(!biggestFrames.length)biggestFrames=replayFrames.map(snapshot);
-    replay=true;replayClock=0;replayIndex=0;presentation.reset();audio.bank();
-
-    const order=[...race.riders].sort((a,b)=>b.s-a.s);
+    const order=[...race.riders].sort((a,b)=>a.finished&&b.finished?a.finishTime-b.finishTime:b.s-a.s);
     const rank=order.findIndex(r=>r.id===0)+1;
+    celebrationRank=rank;
     const prize=rank===1?1200:rank===2?800:rank===3?500:300;
     const styleReward=Math.floor(race.player.score/5);
     lastEarnedCredits=prize+styleReward;
@@ -223,6 +261,30 @@ function tick(dt:number){
     if(champ.state.active){
       champStageInfo=champ.recordStage(order,race.player.score);
     }
+    if(!biggestFrames.length)biggestFrames=replayFrames.map(snapshot);
+
+    celebrationActive=true;
+    celebrationClock=0;
+    race.player.celebrate=0;
+    race.player.celebrateRank=rank;
+
+    if(rank===1){
+      audio.victory();
+    }else if(rank<=3){
+      audio.podium(rank);
+    }else{
+      audio.finishChime();
+    }
+
+    hud.showFinishBanner({
+      rank,
+      time:race.player.finishTime||race.elapsed,
+      score:race.player.score,
+      earnedCredits:lastEarnedCredits,
+      champActive:champ.state.active,
+      champStage:champ.state.currentStage,
+      isFinalStage:champStageInfo?.isFinal
+    });
   }
 }
 
@@ -230,6 +292,34 @@ let pendingRenderTime=0;
 let currentShown: RiderState | null = null;
 function render(dt:number,draw=true){
   let shown=race.player;
+  if(celebrationActive){
+    celebrationClock+=dt;
+    const celProgress=THREE.MathUtils.clamp(celebrationClock/0.7,0,1);
+    race.player.celebrate=celProgress;
+    race.player.celebrateRank=celebrationRank;
+
+    const totalDuration=capture?0.05:CELEBRATION_DURATION;
+    const remaining=Math.max(0,totalDuration-celebrationClock);
+    hud.updateFinishBannerProgress(remaining/totalDuration,remaining);
+
+    const dimLead=Math.min(DIM_LEAD_TIME,totalDuration*0.3);
+    if(celebrationClock>=totalDuration-dimLead){
+      hud.setDimmed(true);
+    }
+
+    if(celebrationClock>=totalDuration){
+      celebrationActive=false;
+      hud.hideFinishBanner();
+      autoReplay=true;
+      if(biggestFrames.length>5&&!capture){
+        replay=true;replayClock=0;replayIndex=0;presentation.reset();audio.bank();
+        setTimeout(()=>hud.setDimmed(false),100);
+      }else{
+        hud.setDimmed(false);
+        presentation.reset();
+      }
+    }
+  }
   if(replay&&biggestFrames.length){
     replayClock+=dt*.65;
     const exact=replayClock*60;
@@ -241,8 +331,48 @@ function render(dt:number,draw=true){
   }
   currentShown=shown;
   if(race.phase==='results'&&!replay){
-    race.player.speed=Math.max(0,race.player.speed-dt*9);
-    for(const r of race.riders){r.speed=Math.max(0,r.speed-dt*9);}
+    const maxS=world.totalLength??(world.length+140);
+    if(celebrationActive){
+      race.player.speed=Math.max(10,race.player.speed-dt*3.5);
+      for(const r of race.riders){
+        r.speed=Math.max(0,r.speed-dt*5);
+        if(r.id!==0){
+          r.s=Math.min(maxS,r.s+r.speed*dt);
+          const rsm=world.sample(r.s,r.lateral);
+          r.position.copy(rsm.position);
+          r.yaw=Math.atan2(-rsm.tangent.x,-rsm.tangent.z);
+          r.pitch=Math.atan(rsm.slope);
+        }
+      }
+      race.player.s=Math.min(maxS,race.player.s+race.player.speed*dt);
+      const sm=world.sample(race.player.s,race.player.lateral);
+      race.player.position.copy(sm.position);
+      race.player.yaw=Math.atan2(-sm.tangent.x,-sm.tangent.z);
+      race.player.pitch=Math.atan(sm.slope);
+      race.player.roll=THREE.MathUtils.damp(race.player.roll,0,8,dt);
+      race.player.lean=THREE.MathUtils.damp(race.player.lean,0,8,dt);
+      race.player.airborne=false;
+      race.player.y=0;
+    }else{
+      race.player.speed=Math.max(0,race.player.speed-dt*9);
+      for(const r of race.riders){
+        r.speed=Math.max(0,r.speed-dt*9);
+        if(r.id!==0&&r.speed>0){
+          r.s=Math.min(maxS,r.s+r.speed*dt);
+          const rsm=world.sample(r.s,r.lateral);
+          r.position.copy(rsm.position);
+          r.yaw=Math.atan2(-rsm.tangent.x,-rsm.tangent.z);
+          r.pitch=Math.atan(rsm.slope);
+        }
+      }
+      if(race.player.speed>0){
+        race.player.s=Math.min(maxS,race.player.s+race.player.speed*dt);
+        const sm=world.sample(race.player.s,race.player.lateral);
+        race.player.position.copy(sm.position);
+        race.player.yaw=Math.atan2(-sm.tangent.x,-sm.tangent.z);
+        race.player.pitch=Math.atan(sm.slope);
+      }
+    }
   }
   if(showcase)shown=showcase.sample(shown,dt);
   for(let i=0;i<visuals.length;i++){
@@ -273,9 +403,9 @@ function render(dt:number,draw=true){
   }else{
     ghostLabel.style.display='none';
   }
-  const mode=replay?'replay':race.phase==='results'?'results':race.phase==='title'?'title':cameraMode;
+  const mode=replay?'replay':celebrationActive?'celebrate':race.phase==='results'?'results':race.phase==='title'?'title':cameraMode;
   const input=showcase?showcase.input():{...controls.read(),...debugInput};
-  const active=race.phase==='racing'||race.phase==='countdown'||replay;
+  const active=race.phase==='racing'||race.phase==='countdown'||replay||celebrationActive;
   const effectDt=race.phase==='paused'?0:dt;
   const riverMist=active&&shown.s/world.length>.84&&shown.s/world.length<.91&&shown.speed>8;
   const wetTarget=rainWeather?.88:riverMist?.66:0;
@@ -283,9 +413,9 @@ function render(dt:number,draw=true){
   presentation.update(shown,effectDt,simTime,mode,input.boost&&shown.boost>0,input.brake,lensWetness,enhancedEffects);camera.updateMatrixWorld();showcase?.camera(camera,shown);
   const fx=pipeline.effects;fx.enabled=enhancedEffects;fx.rain=THREE.MathUtils.damp(fx.rain,rainWeather?1:0,2,effectDt);fx.wetness=lensWetness;
   labelPosition.copy(shown.position);labelPosition.y+=1.1;fx.focusDistance=labelPosition.distanceTo(camera.position);labelPosition.project(camera);
-  fx.focusX=labelPosition.x*.5+.5;fx.focusY=labelPosition.y*.5+.5;fx.cinematic=replay||mode==='side'||mode==='front'?1:0;
+  fx.focusX=labelPosition.x*.5+.5;fx.focusY=labelPosition.y*.5+.5;fx.cinematic=replay||celebrationActive||mode==='side'||mode==='front'?1:0;
   labelPosition.copy(shown.position);labelPosition.y+=2.5;labelPosition.project(camera);
-  playerLabel.style.display=race.phase==='racing'&&!replay&&labelPosition.z<1?'block':'none';playerLabel.style.left=`${(labelPosition.x*.5+.5)*innerWidth}px`;playerLabel.style.top=`${(-labelPosition.y*.5+.5)*innerHeight}px`;
+  playerLabel.style.display=race.phase==='racing'&&!replay&&!celebrationActive&&labelPosition.z<1?'block':'none';playerLabel.style.left=`${(labelPosition.x*.5+.5)*innerWidth}px`;playerLabel.style.top=`${(-labelPosition.y*.5+.5)*innerHeight}px`;
   world.update(camera,dt);
   pendingRenderTime+=effectDt;if(draw){renderer.info.reset();pipeline.render(pendingRenderTime,active?shown.speed:0,input.boost&&shown.boost>0?1:0,impact);pendingRenderTime=0;}
   perf.drawCalls=renderer.info.render.calls;perf.triangles=renderer.info.render.triangles;
@@ -294,7 +424,7 @@ function render(dt:number,draw=true){
   hudClock+=dt;if(hudClock>.06||capture){
     hud.update({
       phase:race.phase,player:race.player,riders:race.riders,time:race.elapsed,countdown:race.countdown,
-      world,best:race.best,split:race.split,fps,replay,
+      world,best:race.best,split:race.split,fps,replay,celebration:celebrationActive,
       earnedCredits:lastEarnedCredits,champActive:champ.state.active,champStage:champ.state.currentStage,
       champStandings:champ.getStandings(),isFinalStage:champStageInfo?.isFinal
     },hudClock);
@@ -309,7 +439,7 @@ function advance(dt:number,draw=true){
   let steps=0;while(accumulator>=1/120&&steps<8){tick(1/120);accumulator-=1/120;steps++;}
   render(dt,draw);
 }
-const api={ready:false,paused:capture,start:()=>action('start'),reset:()=>action('restart'),toggleGhost:()=>action('ghost'),garage:()=>garage,champ:()=>champ.state,race:()=>race,world:()=>world,visuals:()=>visuals,seek:(p:number)=>{race.seek(p);presentation.reset();ghostIndex=0;replay=false;presentation.update(race.player,1/60,simTime,cameraMode,false);for(let i=0;i<10;i++)world.update(camera,1/60);},step:(frames:number,draw=true)=>{for(let i=0;i<frames;i++)advance(1/60,draw&&i===frames-1);},camera:(angle:CameraMode)=>{cameraMode=angle;presentation.reset();},input:(value:Partial<InputState>)=>{debugInput={...debugInput,...value};},setTrack:(idx:number)=>switchTrack(idx),state:()=>{const p=(replay&&currentShown)?currentShown:race.player;return {phase:race.phase,time:race.elapsed,player:{...p,finished:race.player.finished,finishTime:race.player.finishTime,position:p.position.toArray(),velocity:p.velocity.toArray()},riders:race.riders.map(r=>({id:r.id,s:r.s,speed:r.speed,finished:r.finished})),world:{length:world.length,trackId:world.trackId??0,trackName:world.trackName??'THE SUNBREAK DESCENT'},performance:perf,effects:{...pipeline.effects,weather:rainWeather?'rain':'dawn'},replay,checkpoints:race.checkpoint};},pause:()=>race.togglePause()};
+const api={ready:false,paused:capture,start:()=>action('start'),reset:()=>action('restart'),toggleGhost:()=>action('ghost'),garage:()=>garage,champ:()=>champ.state,race:()=>race,world:()=>world,visuals:()=>visuals,seek:(p:number)=>{race.seek(p);presentation.reset();ghostIndex=0;replay=false;celebrationActive=false;hud.hideFinishBanner();hud.setDimmed(false);presentation.update(race.player,1/60,simTime,cameraMode,false);for(let i=0;i<10;i++)world.update(camera,1/60);},step:(frames:number,draw=true)=>{for(let i=0;i<frames;i++)advance(1/60,draw&&i===frames-1);},camera:(angle:CameraMode)=>{cameraMode=angle;presentation.reset();},input:(value:Partial<InputState>)=>{debugInput={...debugInput,...value};},setTrack:(idx:number)=>switchTrack(idx),state:()=>{const p=(replay&&currentShown)?currentShown:race.player;return {phase:race.phase,time:race.elapsed,celebration:celebrationActive,player:{...p,finished:race.player.finished,finishTime:race.player.finishTime,position:p.position.toArray(),velocity:p.velocity.toArray()},riders:race.riders.map(r=>({id:r.id,s:r.s,speed:r.speed,finished:r.finished})),world:{length:world.length,trackId:world.trackId??0,trackName:world.trackName??'THE SUNBREAK DESCENT'},performance:perf,effects:{...pipeline.effects,weather:rainWeather?'rain':'dawn'},replay,checkpoints:race.checkpoint};},pause:()=>race.togglePause()};
 if(capture&&new URLSearchParams(location.search).has('showcase')){
   showcase=new ShowcaseDirector(race,world);
   Object.assign(api,{showcase:{

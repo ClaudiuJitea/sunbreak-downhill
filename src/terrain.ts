@@ -284,12 +284,40 @@ export function createWorld(materialFactory: MaterialFactory, trackId = 0): Worl
   const curve=new THREE.CatmullRomCurve3(controls.map(([x,z])=>new THREE.Vector3(x,trackDef.elevationFn(z),z)),false,'catmullrom',.35);
   curve.arcLengthDivisions=2200;
   const length=curve.getLength(), count=Math.ceil(length/2), ds=length/count;
+  const runoffDistance = 150;
+  const runoffCount = Math.ceil(runoffDistance / ds);
+  const totalCount = count + runoffCount;
+  const totalLength = length + runoffCount * ds;
   const centers:THREE.Vector3[]=[], tangents:THREE.Vector3[]=[], rights:THREE.Vector3[]=[];
   const grid=new Map<string,number[]>(); const bucket=32;
   for(let i=0;i<=count;i++){
     const p=curve.getPointAt(i/count),t=curve.getTangentAt(i/count),r=new THREE.Vector3(-t.z,0,t.x).normalize();
     centers.push(p);tangents.push(t);rights.push(r);
     const key=`${Math.floor(p.x/bucket)},${Math.floor(p.z/bucket)}`;let cell=grid.get(key);if(!cell){cell=[];grid.set(key,cell);}cell.push(i);
+  }
+  let currP = centers[count].clone();
+  let currT = tangents[count].clone().normalize();
+  for(let i=count+1;i<=totalCount;i++){
+    const lookAheadX = currP.x + currT.x * ds;
+    const lookAheadZ = currP.z + currT.z * ds;
+    const rawY = rawHeight(lookAheadX, lookAheadZ);
+    const slopeToGround = (rawY - currP.y) / ds;
+    currT.y = THREE.MathUtils.lerp(currT.y, THREE.MathUtils.clamp(slopeToGround, -0.22, 0.02), 0.06);
+    const horizLen = Math.hypot(currT.x, currT.z) || 1;
+    const horizScale = Math.sqrt(Math.max(0.01, 1 - currT.y * currT.y));
+    currT.x = (currT.x / horizLen) * horizScale;
+    currT.z = (currT.z / horizLen) * horizScale;
+    currT.normalize();
+    const nextP = currP.clone().addScaledVector(currT, ds);
+    const r = new THREE.Vector3(-currT.z, 0, currT.x).normalize();
+    centers.push(nextP);
+    tangents.push(currT.clone());
+    rights.push(r);
+    const key = `${Math.floor(nextP.x / bucket)},${Math.floor(nextP.z / bucket)}`;
+    let cell = grid.get(key);
+    if (!cell) { cell = []; grid.set(key, cell); }
+    cell.push(i);
+    currP = nextP;
   }
   const env = trackDef.environment;
   const jumpLips=trackDef.jumpRatios.map(r=>length*r);
@@ -316,21 +344,21 @@ export function createWorld(materialFactory: MaterialFactory, trackId = 0): Worl
   }
   function height(x:number,z:number) {
     const raw=rawHeight(x,z),n=nearest(x,z);if(n.distance>29)return raw;
-    const k=n.index, a=centers[Math.max(0,k-1)],b=centers[Math.min(count,k+1)];
+    const k=n.index, a=centers[Math.max(0,k-1)],b=centers[Math.min(totalCount,k+1)];
     const dx=b.x-a.x,dz=b.z-a.z,t=THREE.MathUtils.clamp(((x-a.x)*dx+(z-a.z)*dz)/(dx*dx+dz*dz),0,1);
-    const along=(Math.max(0,k-1)+t*(Math.min(count,k+1)-Math.max(0,k-1)))*ds;
+    const along=(Math.max(0,k-1)+t*(Math.min(totalCount,k+1)-Math.max(0,k-1)))*ds;
     const bed=THREE.MathUtils.lerp(a.y,b.y,t), bank=n.distance>5?Math.sin(Math.min((n.distance-5)/15,1)*Math.PI)*1.6:0;
     return THREE.MathUtils.lerp(bed+bank,raw,smooth(7,29,n.distance))+ramp(along).height*(1-smooth(5,11,n.distance))-ravine(along)*(1-smooth(13,29,n.distance));
   }
   const sectionNames=trackDef.sectionNames;
   function sample(s:number,lateral=0):TrackSample {
-    const clamped=THREE.MathUtils.clamp(s,0,length),f=clamped/ds,i=Math.min(count-1,Math.floor(f)),u=f-i;
+    const clamped=THREE.MathUtils.clamp(s,0,totalLength),f=clamped/ds,i=Math.min(totalCount-1,Math.floor(f)),u=f-i;
     const position=centers[i].clone().lerp(centers[i+1],u),tangent=tangents[i].clone().lerp(tangents[i+1],u).normalize(),right=rights[i].clone().lerp(rights[i+1],u).normalize();
     position.addScaledVector(right,lateral);
     const j=ramp(clamped);position.y+=j.height-ravine(clamped);
     if(j.amount>0){const lift=j.lift||(clamped<jumpLips[0]+1?4.5:6.5);tangent.y+=1.7*lift/17*j.amount**.7*Math.hypot(tangent.x,tangent.z);tangent.normalize();}
     // A broad, gentle berm reads clearly without forcing every rider onto its crown.
-    const turn=tangents[Math.min(count,i+7)].x-tangents[Math.max(0,i-7)].x;
+    const turn=tangents[Math.min(totalCount,i+7)].x-tangents[Math.max(0,i-7)].x;
     position.y+=Math.max(0,-Math.sign(turn)*lateral)*Math.min(Math.abs(turn)*.19,.08);
     if(Math.abs(lateral)>4.4)position.y=THREE.MathUtils.lerp(position.y,height(position.x,position.z),smooth(4.4,9,Math.abs(lateral)));
     const section=Math.min(8,Math.floor(clamped/length*9));
@@ -341,7 +369,7 @@ export function createWorld(materialFactory: MaterialFactory, trackId = 0): Worl
   // close T-junctions; the world field is unique, so there is no repeated tile.
   const terrainMaterial=materialFactory(0xffffff,'terrain');
   const maskSize=2048,maskData=new Uint8Array(maskSize*maskSize);const texel=DOMAIN/maskSize;
-  for(let i=0;i<=count;i++){
+  for(let i=0;i<=totalCount;i++){
     const s=i*ds;if(trackDef.hasRavine&&s>ravineLip+1&&s<ravineLip+28)continue;
     const p=centers[i],cx=(p.x-MIN_X)/texel,cz=(p.z-MIN_Z)/texel,r=6.3/texel;
     for(let iz=Math.floor(cz-r);iz<=Math.ceil(cz+r);iz++)for(let ix=Math.floor(cx-r);ix<=Math.ceil(cx+r);ix++)
@@ -396,10 +424,10 @@ export function createWorld(materialFactory: MaterialFactory, trackId = 0): Worl
     const vertices:number[]=[],indices:number[]=[],across=Math.max(1,Math.ceil(width/1.2)),stride=across+1;
     // Sampling across the section is essential: an apron made only from its
     // raised outer endpoints becomes a ceiling over the trail and its riders.
-    for(let i=0;i<=count;i++)for(let j=0;j<=across;j++){
+    for(let i=0;i<=totalCount;i++)for(let j=0;j<=across;j++){
       const sm=sample(i*ds,offset-width/2+j/across*width);vertices.push(sm.position.x,sm.position.y+y,sm.position.z);
     }
-    for(let i=0;i<count;i++){
+    for(let i=0;i<totalCount;i++){
       const ss=(i+.5)*ds;if(trackDef.hasRavine&&ss>ravineLip+1&&ss<ravineLip+28)continue;
       for(let j=0;j<across;j++){const a=i*stride+j,b=a+stride;indices.push(a,a+1,b,a+1,b+1,b);}
     }
@@ -409,9 +437,9 @@ export function createWorld(materialFactory: MaterialFactory, trackId = 0): Worl
   ribbon(0,8.3,edge,.05);ribbon(0,7.6,dirt,.10);ribbon(-1.1,.48,worn,.115);ribbon(1.1,.48,worn,.115);
   // Small trail edge chevrons supply near-field parallax without a noisy texture.
   const markerGeo=new THREE.BoxGeometry(.16,.12,1.6),markerMat=materialFactory(0xf7d592,'dirt');
-  const markers=new THREE.InstancedMesh(markerGeo,markerMat,Math.floor(count/7)*2);let markerIndex=0;
+  const markers=new THREE.InstancedMesh(markerGeo,markerMat,Math.floor(totalCount/7)*2);let markerIndex=0;
   const dummy=new THREE.Object3D();
-  for(let i=0;i<count;i+=7)for(const side of[-1,1]){if(markerIndex>=markers.count)continue;const p=sample(i*ds,side*4.05);dummy.position.copy(p.position);dummy.position.y+=.1;dummy.rotation.set(0,Math.atan2(-p.tangent.x,-p.tangent.z),0);dummy.scale.set(1,1,1);dummy.updateMatrix();markers.setMatrixAt(markerIndex++,dummy.matrix);}markers.count=markerIndex;group.add(markers);
+  for(let i=0;i<totalCount;i+=7)for(const side of[-1,1]){if(markerIndex>=markers.count)continue;const p=sample(i*ds,side*4.05);dummy.position.copy(p.position);dummy.position.y+=.1;dummy.rotation.set(0,Math.atan2(-p.tangent.x,-p.tangent.z),0);dummy.scale.set(1,1,1);dummy.updateMatrix();markers.setMatrixAt(markerIndex++,dummy.matrix);}markers.count=markerIndex;group.add(markers);
 
   const trunkMat=materialFactory(env.trunkColor,'wood'),leafMat=materialFactory(env.leafColor,'foliage'),leafLight=materialFactory(env.leafLightColor,'foliage'),rockMat=materialFactory(env.rockColor,'rock');
   // Chunking keeps instance culling useful: a distant grove is one draw call,
@@ -492,7 +520,7 @@ export function createWorld(materialFactory: MaterialFactory, trackId = 0): Worl
   for(let i=0;i<70;i++){dummy.position.set((random()-.5)*750,10.12,trackDef.riverZ+(random()-.5)*15);dummy.rotation.set(-Math.PI/2,0,0);dummy.scale.set(.5+random()*2,1,1);dummy.updateMatrix();waterGlints.setMatrixAt(i,dummy.matrix);}group.add(waterGlints);
 
   let frame=0;
-  return {group,length,sample,height,checkpoints,obstacles,trackId:trackDef.id,trackName:trackDef.name,trackSubtitle:trackDef.subtitle,environment:env,update(camera,dt){
+  return {group,length,totalLength,sample,height,checkpoints,obstacles,trackId:trackDef.id,trackName:trackDef.name,trackSubtitle:trackDef.subtitle,environment:env,update(camera,dt){
     void dt;frame++;const x=camera.position.x,z=camera.position.z;
     // One bounded patch and one vegetation batch per frame avoids jump-time spikes.
     if(pendingRing<0){const nx=Math.round(x/16)*16,nz=Math.round(z/16)*16;if(nx!==clipX||nz!==clipZ){pendingX=nx;pendingZ=nz;pendingRing=0;}}
