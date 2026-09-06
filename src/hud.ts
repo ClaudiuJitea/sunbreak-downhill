@@ -365,7 +365,7 @@ export class HUD {
 
     this.el('position').textContent = String(order.findIndex(r => r.id === 0) + 1);
     this.el('timer').textContent = time(s.time);
-    this.el('speed').textContent = String(Math.round(p.speed * 3.6));
+    this.el('speed').textContent = String(Math.round(p.speed * 1.9));
     this.el('boost-fill').style.width = `${p.boost <= 1 ? p.boost * 100 : p.boost}%`;
     this.el('score').textContent = String(p.score).padStart(4, '0');
     const sample = s.world.sample(p.s);

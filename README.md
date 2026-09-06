@@ -1,177 +1,176 @@
 # SUNBREAK — Downhill Club
 
 <p align="center">
-  <img src="media/SUNBREAK-showcase-poster.jpg" alt="Four cel-shaded BMX riders racing down the SUNBREAK mountain course" width="100%">
+  <img src="media/SUNBREAK-showcase-poster.jpg" alt="Four downhill riders racing down the SUNBREAK mountain course" width="100%">
 </p>
 
-<p align="center"><strong>Four riders. Five mountain stages. Full send.</strong></p>
+<p align="center"><strong>Grab your handlebars, lean into the corners, and send it down the mountain!</strong></p>
 
-A procedural, cel-shaded BMX downhill racing game. Four riders tear down high-speed alpine switchbacks, granite slate corridors, terracotta canyon gaps, and deep mossy glades. Every mesh, terrain heightfield, procedural texture, sound synthesizer, and animation rig is generated purely in code—with zero downloaded 3D models, textures, or external runtime assets.
+**SUNBREAK** is a fast-paced 3D downhill mountain bike racing game you can play right in your web browser. Drop in against three fierce rivals, carve through hair-raising alpine berms, launch over massive canyon gaps, and throw down jaw-dropping air tricks—all the way to the checkered line!
 
-## Highlights
+---
 
-- **5 Distinct Mountain Courses & Environments**:
-  - *The Sunbreak Descent*: Golden alpine morning, cedar switchbacks, rock gardens, and a canyon ravine gap.
-  - *Ridge Runner*: Cool morning slate, sheer granite drops, pine chicanes, and double rollers.
-  - *Gravity Lab*: High-altitude azure skies, manicured turf, step-downs, mega tables, and massive slopestyle kickers.
-  - *Red Dust Canyon*: Apricot desert skies, terracotta sandstone, slickrock ridges, and canyon gap jumps.
-  - *Black Forest Slalom*: Twilight moss, hemlock root carpets, steep chasm descents, and tight technical berms.
-- **Multi-Stage Championship Tour**:
-  - 5-stage Grand Prix campaign with cumulative points standings (`25-18-15-12`), style point conversion bonuses, podium ceremonies, and championship trophy presentation.
-  - Switch freely between Championship Tour and Single Race modes.
-- **Pro Shop / Bike Garage**:
-  - **Performance Upgrades**: Invest podium prize credits across 4 tuning categories: Tires (grip & cornering), Frame (impact absorption & stability), Drivetrain (acceleration & top speed), and Springs (bunny hop launch height).
-  - **Paint Shop**: Customize frame finishes (8 colorways), jersey styles (6 team designs), and helmet accents (6 colors), saved persistently to `localStorage`.
-- **Full Air Trick System (10 Unique Stunts)**:
-  - Master Tabletop, X-Up, Superman (with horizontal body kickout), Can-Can, No-Hander, Nac-Nac, Tailwhip, 360 Spin, Backflip, and Frontflip.
-  - Preload hop release bonus and snappy rotation windows (`0.72s`–`0.85s`) enable clean launches and landings off both small trail rollers and mega cliffs.
-- **Hard Touch Lateral Collisions**:
-  - High-speed lateral impacts, sideswipes, and mid-air collisions trigger mutual crashes for both the player and AI opponents.
-- **Natural Crash Dynamics & Surface Clearance**:
-  - Fallen bikes and athletes slide along the terrain surface with calculated positive clearance ($+0.22\text{ m}$), eliminating mesh clipping and ground sinking.
-- **Procedural 3D Race Number Badges**:
-  - Procedural geometric digit badges assigned across competitors (Player: `#07`, Jun: `#14`, Kai: `#23`, Niko: `#42`, Ghost: `#00`).
-- **Optional Best-Run PB Ghost**:
-  - Toggle personal best wireframe ghost replay via HUD toggle button, hotkey (`G`), or settings.
-- **Unified Cel-Shaded Art Direction**:
-  - Pure WebGL2/Three.js custom shaders featuring multi-pass ink outlines, Sobel normal/depth edge detection, directional hatch shadows, stepped atmospheric fog, rim lighting, lens flare, motion blur, and weather visor droplets.
-- **Procedural Web Audio Engine**:
-  - Real-time synthesized audio layers: tire hum, scree gravel crunch, wind rushing, chain rattle, air whooshes, collision impacts, horn blasts, and dynamic musical soundtrack.
+## ⚡ Quick Start: How to Play
 
-## Run
-
-Requires Node.js 22.12+ (Node 24 recommended) and a modern browser with WebGL2 support.
+No downloads or heavy installs needed. Start the game with Node.js in seconds:
 
 ```sh
 npm install
 npm run dev
 ```
 
-Open the URL printed by Vite (typically `http://localhost:5173`), then click **Drop in** or press **Enter**. Audio initializes on user interaction. 
+Open the link shown in your terminal (usually `http://localhost:5173`). Click anywhere or hit **Enter** to drop in at the starting gate!
 
-To build for production:
-```sh
-npm run build      # TypeScript validation & Vite bundle build
-npm run preview    # Preview production build locally
-```
+---
 
-## Ride & Controls
+## 🎮 Controls & Trick Guide
 
-| Input | Action |
-| --- | --- |
-| **W** / **↑** | Pedal / Accelerate |
-| **A** **D** / **←** **→** | Steer / Choose line |
-| **S** / **↓** | Brake; slide while steering (or in air: Backflip shortcut) |
-| **Space** *(hold & release)* | Preload suspension, then hop; time release with the lip for extra height |
-| **Shift** | Spend boost |
-| **C** | Manual / Wheelie |
-| **1** | Tabletop (180 pts) |
-| **2** / **X** | X-Up (150 pts) |
-| **3** | Superman (320 pts) |
-| **4** | Can-Can (280 pts) |
-| **5** / **N** | No-Hander (340 pts) |
-| **6** | Nac-Nac (260 pts) |
-| **7** / **Space + D** | Tailwhip (360 pts) |
-| **8** / **Space + A** | 360 Spin (420 pts) |
-| **9** / **B** / **Space + S** | Backflip (500 pts) |
-| **0** / **Space + W** | Frontflip (550 pts) |
-| **G** | Toggle Ghost Rider on / off |
-| **T** | Cycle track (in menu / pause) |
-| **V** | Toggle dawn / rain weather |
-| **F** | Toggle full / reduced visual effects |
-| **M** | Mute / unmute audio |
-| **R** | Restart current race countdown |
-| **Esc** / **P** | Pause / resume; view controls |
+### Bike Controls
 
-Land completed tricks cleanly to bank style points and earn extra boost. Incomplete rotations or landing off-axis will cause a spill. 
+| Key | What it does | Pro Tip |
+| :--- | :--- | :--- |
+| **W** or **↑** | **Pedal / Accelerate** | Keep pedaling out of corners to build momentum! |
+| **A** / **D** or **←** / **→** | **Steer** | Lean smoothly into turns or carve across the trail. |
+| **S** or **↓** | **Brake / Slide** | Tap while turning to initiate a dirt-spraying drift. |
+| **Space** *(Hold & Release)* | **Bunny Hop (Preload)** | Hold down as you approach a jump lip and release right at the edge for huge air! |
+| **Shift** | **Nitro Boost** | Burns your boost gauge for blistering straightaway speed. |
+| **C** | **Wheelie / Manual** | Pop your front wheel up to show off on flat sections. |
+| **R** | **Quick Restart** | Instantly restart your race from the start gate. |
+| **G** | **Ghost Rider** | Toggle your personal best ghost on or off. |
+| **V** | **Weather Toggle** | Switch between golden morning sunshine and rainy alpine trails. |
+| **F** | **Graphics Mode** | Toggle between full visual effects and lightweight performance mode. |
+| **M** | **Mute / Unmute** | Toggle game audio and music. |
+| **Esc** / **P** | **Pause Menu** | Pause the action and view controls. |
 
-Opponent AI profiles:
-- **JUN**: Disciplined lines, high cornering speed, smooth lines.
-- **KAI**: Aggressive overtaker, hits kickers hard, attempts high-risk air tricks.
-- **NIKO**: Unpredictable line choices, drafts opportunistically, tactical speed changes.
+---
 
-## Game Modes & Garage
+### Air Tricks (Score Big & Fill Your Boost!)
 
-### Championship Tour
-Select **Championship** on the title menu to enter the 5-stage Grand Prix:
-- Stages 1–5 rotate through *The Sunbreak Descent*, *Ridge Runner*, *Gravity Lab*, *Red Dust Canyon*, and *Black Forest Slalom*.
-- Position points awarded per stage: 1st (25 pts), 2nd (18 pts), 3rd (15 pts), 4th (12 pts), plus style bonus credits based on air trick score.
-- Cumulative leaderboard tracked between rounds with stage progression and final awards podium.
+Whenever you catch air off a kicker, roller, or cliff drop, hit a trick key to perform a stunt. **Land straight to bank your style points and recharge your boost!** If you're still mid-trick when hitting the ground, you'll take a spill!
 
-### Pro Shop / Garage
-Access the **Pro Shop** from the title screen to tune your machine and gear:
-- **Tires**: Enhances cornering grip and reduces lateral slide on loose scree.
-- **Suspension**: Softens harsh landings, shortens crash recovery downtime, and stabilizes rough terrain traversal.
-- **Drivetrain**: Increases pedaling acceleration and raises top downhill speed.
-- **Springs**: Increases preload hop impulse for massive airtime off jump lips.
-- **Paint Shop**: Real-time palette updates for frame, jersey, and helmet finishes.
+| Key | Trick Name | Style Points | How it looks |
+| :---: | :--- | :---: | :--- |
+| **1** | **Tabletop** | 180 pts | Tilt the bike flat and sideways in mid-air. |
+| **2** or **X** | **X-Up** | 150 pts | Turn the handlebars a full 180° while keeping your grip. |
+| **3** | **Superman** | 320 pts | Kick both legs straight back and fly horizontally behind the seat! |
+| **4** | **Can-Can** | 280 pts | Kick both feet over the top tube to one side. |
+| **5** or **N** | **No-Hander** | 340 pts | Let go of the handlebars and spread your arms wide! |
+| **6** | **Nac-Nac** | 260 pts | Whip one leg behind the rear wheel with style. |
+| **7** or **Space + D** | **Tailwhip** | 360 pts | Kick the bike frame in a full rotation around the handlebars. |
+| **8** or **Space + A** | **360 Spin** | 420 pts | Spin yourself and your bike a full 360 degrees. |
+| **9** or **B** or **Space + S** | **Backflip** | 500 pts | Pull backwards into a vertical backflip loop! |
+| **0** or **Space + W** | **Frontflip** | 550 pts | Lean forward into a daring front roll! |
 
-## Visual Effects & Renderer
+---
 
-Full effects are active by default and can be toggled using **F** or the HUD toggle button:
-- **Speed & Boost Effects**: Peripheral radial motion blur, chromatic aberration pulses, and aerodynamic wind streak geometry that intensify with boost.
-- **Screen-Space Reflections & Glints**: Stylized SSR rays reflect track environment and water on gloss bike frames and visors.
-- **Dynamic Weather System**: Toggle between clear dawn golden hour and driving alpine rain (**V**). Visor glass catches refractive raindrops that drain as you gain downhill speed.
-- **Particle Systems**: GPU-instanced dust plumes, aggressive brake skid smoke, water spray when crossing rivers, and sparks during metal-on-rock crashes.
-- **Camera Presentation**: Smooth spring chase camera with pitch lookahead, high-G impact vibration, and dynamic air orbit angles during ravine leaps.
+## 🚵 What Makes SUNBREAK Awesome?
 
-## Source Map
+### 1. Realistic Downhill Speeds
+No cartoonish rocket speeds here! SUNBREAK features **real-world downhill mountain bike telemetry**:
+- Flow through trail corners at a brisk **30–45 km/h**.
+- Pick up speed down steep chutes and rock gardens at **50–70 km/h**.
+- Hit full boost down the fastest straightaways to top out at **80–85 km/h**—just like the pros in real-world World Cup Downhill races!
 
-| Module | Responsibility |
-| --- | --- |
-| `src/main.ts` | 120 Hz fixed-step loop, game lifecycle, stage switching, replay recording, ghost playback |
-| `src/terrain.ts` | 5 course spline geometries, hydraulic erosion heightfields, biome colorways, vegetation, and jumps |
-| `src/types.ts` | Shared type contracts for world, tracks, input, rider dynamics, garage, and championship |
-| `src/championship.ts` | 5-stage tour logic, point scoring tables, stage transitions, and local storage persistence |
-| `src/garage.ts` | Bike upgrades, stat multipliers, paint shop presets, credit bank, and garage state persistence |
-| `src/npr.ts` | Cel-shading passes, MRT color/normal-depth, Sobel outlines, hatch shadows, rim lighting, stepped fog |
-| `src/physics.ts` | Multi-wheel suspension, grip, preload bunny hops, air physics, 10 tricks, and mutual collisions |
-| `src/rider.ts` | Procedural BMX bike, athletic athlete rig, analytic two-bone IK, 3D digit badges, and crash poses |
-| `src/race.ts` | AI behavior trees, drafting, hard touch collisions, checkpoints, split times, and placements |
-| `src/presentation.ts` | Spring chase camera, FOV scaling, air orbit, screen shake, and impact effects |
-| `src/trail-effects.ts` | Particle pools for dust, scree pebbles, brake smoke, water spray, and crash sparks |
-| `src/screen-effects.ts` | Post-processing shaders: motion blur, visor droplets, lens flare, bloom, and speed strokes |
-| `src/hud.ts`, `src/style.css` | UI layer: speedometer, boost gauge, trick alerts, garage modals, championship tables |
-| `src/audio.ts` | Procedural Web Audio: oscillators, noise filters, wind layers, chain rattle, horns, and music |
+### 2. Live Opponent Badges & Team Colors
+Never lose track of your rivals! Every rider on the mountain has a **floating 3D name badge** hovering right above their helmet:
+- **YOU** (Gold / #07): That's you, rider!
+- **JUN** (Teal / #14): Disciplined, high-speed lines and butter-smooth cornering.
+- **KAI** (Orange / #23): Aggressive overtaker who loves hitting kickers and throwing big tricks.
+- **NIKO** (Violet / #42): Tactical racer who loves drafting behind you and making surprise passes.
 
-## Verification & Automated Tests
+Each badge shows their current name, live distance from you, and their official race number plate on their jersey.
 
-The test suite exercises game physics, AI, visual state, championship progression, garage upgrades, and rendering pipelines in headless Chromium:
+### 3. Epic 360° Finish Line Celebration
+When you cross the checkered arch, the race doesn't just stop cold:
+- **Extended Trail**: The mountain track keeps rolling down the valley for another 150 meters past the finish line, giving you plenty of space to coast and celebrate!
+- **Hands-in-the-Air Victory Pose**: Take 1st place and your rider will let go of the handlebars and throw both arms straight in the air in pure victory bliss—just like a world champion cyclist!
+- **Podium Salute**: Finish 2nd, 3rd, or 4th to celebrate with a podium wave to the crowd.
+- **360° Orbit Camera**: The camera smoothly swoops around your bike in a full 360-degree rotation.
+- **Sleek Bottom Victory Banner**: A clean podium banner displays your rank (`P1 WINNER`, `P2 PODIUM`, etc.) without covering up your rider.
 
-```sh
-npm test
-```
+### 4. "Your Biggest Air" Cinematic Replay
+A few moments after crossing the finish line, the screen gently dims and transitions into a **slow-motion cinematic replay** of your highest, sickest jump of the race! Watch yourself fly through the sky from a dramatic TV broadcast angle.
 
-All **22 browser gameplay, visual, and systems checks pass**, verifying:
-1. Title screen loading with 0 WebGL/shader errors.
-2. 3-second countdown and 4-rider race start.
-3. Pedaling physics and forward course advancement.
-4. Steering authority and lateral line choice.
-5. Braking deceleration and speed scrubbing.
-6. Preload suspension release producing bunny hops.
-7. Pause / resume game state freeze.
-8. Ravine jump launch and clean landing.
-9. Full/reduced effects toggle, rain wetness onset, and visor draining.
-10. Finish line trigger, results screen, best-run PB ghost persistence, and race reset.
-11. 5-course track selector switching between distinct environments, elevations, and seedings.
-12. Ghost rider toggle via HUD button, hotkey (`G`), and `localStorage`.
-13. Garage upgrades purchasing, credit deduction, and paint shop customization.
-14. Championship Tour multi-stage grand prix flow and stage advance.
-15. Superman and aerial trick execution during big jumps.
-16. Backflip, frontflip, and 360 spin execution, rotation, and clean landing.
-17. Crash slide damping and natural rest orientation.
-18. Hard touch lateral collisions causing mutual wipeouts.
-19. Environmental biomes (distinct sky horizons, fog colors, and terrain palettes).
-20. Championship Next Stage button click and stage progression.
-21. Procedural 3D digit race badges on competitor jerseys (`#07`, `#14`, `#23`, `#42`).
-22. Crashed rider elevation remaining visible flush above ground without sinking.
+### 5. Rubbing is Racing: Collisions & Crashes
+Watch your elbows! If you bump handlebars or sideswipe another rider at high speed, **both of you can wipe out**:
+- Bikes and riders tumble realistically across the dirt.
+- Riders don't clip through the ground—they slide naturally along the terrain, dust flying everywhere.
+- Quick recovery lets you hop right back on your bike and chase down the pack!
 
-```sh
-npm run capture           # Generate 2880×1800 high-res stills and state reports
-npm run capture:motion    # Record 30 fps simulated motion sequences and WebM clips
-```
+---
 
-## Project Status
+## 🏔️ 5 Unique Mountain Tracks
 
-SUNBREAK is a feature-complete, standalone web racing game requiring no external network dependencies or downloaded assets. All geometry, biome scenery, shaders, animations, and sound effects run client-side in pure WebGL2 and Web Audio.
+Jump into **Single Race** mode to test your skills across five hand-crafted downhill tracks:
 
+1. **The Sunbreak Descent**: Golden alpine morning light, sweeping cedar switchbacks, loose rock gardens, and a thrilling leap across a deep canyon ravine.
+2. **Ridge Runner**: High-altitude slate cliffs, sheer granite drop-offs, sharp pine chicanes, and double rollers built for speed.
+3. **Gravity Lab**: Slopestyle paradise under azure skies with manicured berms, step-downs, mega table-tops, and massive kickers.
+4. **Red Dust Canyon**: Hot desert slickrock, terracotta canyon gaps, sandstone cliffs, and blinding red dirt drifts.
+5. **Black Forest Slalom**: Twilight mist, slippery hemlock roots, tight chasm descents, and technical switchbacks that test your reflexes.
+
+---
+
+## 🏆 Championship Tour
+
+Want to prove you're the undisputed downhill king? Jump into the **Championship Tour**:
+- Race across all **5 stages** in a season-long Grand Prix campaign.
+- Earn points each race based on where you finish:
+  - **1st Place**: 25 points
+  - **2nd Place**: 18 points
+  - **3rd Place**: 15 points
+  - **4th Place**: 12 points
+- **Style Points Bonus**: Pull off big tricks during your race to earn bonus prize credits!
+- Track the season leaderboard between rounds, stand atop the final awards podium, and lift the gold Championship Trophy!
+
+---
+
+## 🛠️ The Pro Shop & Bike Garage
+
+Earn prize money from races and invest it in your ride at the **Pro Shop**:
+
+### Performance Upgrades
+- **Tires**: Enhances your cornering grip and keeps you glued to the dirt on loose gravel turns.
+- **Suspension**: Softens rough rock gardens, soaks up big landings, and helps you recover faster from crashes.
+- **Drivetrain**: Improves pedaling acceleration and cranks up your top downhill speed.
+- **Springs**: Gives you a stronger bunny hop so you can launch higher off jump lips.
+
+### Custom Paint Shop
+Make your bike uniquely yours! Choose from:
+- **8 Frame Colorways**: Electric Lime, Stealth Black, Desert Gold, Sunset Red, Deep Cyan, and more.
+- **6 Jersey Styles**: Dress your rider in your favorite team colors.
+- **6 Helmet Accents**: Match your helmet visor to your custom setup.
+
+*All your garage upgrades and paint selections save automatically in your browser!*
+
+---
+
+## 💡 Pro Riding Tips
+
+1. **Preload the Jumps**: Don't just ride off the lips—hold **Space** as you approach a jump and release it *just* as your front wheel reaches the lip. You'll fly twice as high!
+2. **Drift Tight Corners**: On sharp switchbacks, tap **S** or **Down Arrow** while turning to slide the rear tire and swing your bike around without losing all your speed.
+3. **Draft Your Opponents**: Ride closely behind an opponent to catch their slipstream and gain a speed boost to sling past them.
+4. **Bank Your Tricks**: Always finish spinning or return your rider to the bars before hitting the ground. Clean landings give you instant boost!
+5. **Upgrade Early**: If you're struggling to stay ahead in the Championship, spend your credits on **Tires** and **Drivetrain** first for instant speed and grip.
+
+---
+
+## 💻 Technical & Build Details
+
+For developers, contributors, or anyone curious about what's under the hood:
+
+- **Built with Pure Code**: Built in TypeScript with Three.js and WebGL2. Every piece of terrain, bike frame, rider skeleton, custom cel-shading shader, and sound effect is generated entirely in code with **zero downloaded 3D models or textures**.
+- **Procedural Web Audio**: Synthesizes tire scree, wind hum, chain rattles, and custom dynamic music using browser Web Audio oscillators and noise filters.
+- **Production Build**:
+  ```sh
+  npm run build    # Compiles TypeScript and builds Vite bundle
+  npm run preview  # Previews production build locally
+  ```
+- **Automated Test Suite**:
+  ```sh
+  npm test         # Runs 22 comprehensive physics, rendering, and race systems tests
+  ```
+
+---
+
+*Ready to ride? Drop in, tuck low, and see you at the bottom!*
