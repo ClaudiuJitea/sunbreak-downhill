@@ -10,7 +10,7 @@
 
 ---
 
-## ⚡ Quick Start: How to Play
+## Quick Start: How to Play
 
 No downloads or heavy installs needed. Start the game with Node.js in seconds:
 
@@ -23,7 +23,7 @@ Open the link shown in your terminal (usually `http://localhost:5173`). Click an
 
 ---
 
-## 🎮 Controls & Trick Guide
+## Controls & Trick Guide
 
 ### Bike Controls
 
@@ -63,7 +63,7 @@ Whenever you catch air off a kicker, roller, or cliff drop, hit a trick key to p
 
 ---
 
-## 🚵 What Makes SUNBREAK Awesome?
+## What Makes SUNBREAK Awesome?
 
 ### 1. Realistic Downhill Speeds
 No cartoonish rocket speeds here! SUNBREAK features **real-world downhill mountain bike telemetry**:
@@ -99,7 +99,7 @@ Watch your elbows! If you bump handlebars or sideswipe another rider at high spe
 
 ---
 
-## 🏔️ 5 Unique Mountain Tracks
+## 5 Unique Mountain Tracks
 
 Jump into **Single Race** mode to test your skills across five hand-crafted downhill tracks:
 
@@ -111,7 +111,7 @@ Jump into **Single Race** mode to test your skills across five hand-crafted down
 
 ---
 
-## 🏆 Championship Tour
+## Championship Tour
 
 Want to prove you're the undisputed downhill king? Jump into the **Championship Tour**:
 - Race across all **5 stages** in a season-long Grand Prix campaign.
@@ -125,7 +125,7 @@ Want to prove you're the undisputed downhill king? Jump into the **Championship 
 
 ---
 
-## 🛠️ The Pro Shop & Bike Garage
+## The Pro Shop & Bike Garage
 
 Earn prize money from races and invest it in your ride at the **Pro Shop**:
 
@@ -145,7 +145,7 @@ Make your bike uniquely yours! Choose from:
 
 ---
 
-## 💡 Pro Riding Tips
+## Pro Riding Tips
 
 1. **Preload the Jumps**: Don't just ride off the lips—hold **Space** as you approach a jump and release it *just* as your front wheel reaches the lip. You'll fly twice as high!
 2. **Drift Tight Corners**: On sharp switchbacks, tap **S** or **Down Arrow** while turning to slide the rear tire and swing your bike around without losing all your speed.
@@ -155,7 +155,7 @@ Make your bike uniquely yours! Choose from:
 
 ---
 
-## 💻 Technical & Build Details
+## Technical & Build Details
 
 For developers, contributors, or anyone curious about what's under the hood:
 
