@@ -56,6 +56,8 @@ function switchTrack(trackIndex:number){
   presentation=new Presentation(scene,camera,world,createMaterial);
   if(ghostVisual)ghostVisual.group.visible=false;
   if(ghostLabel)ghostLabel.style.display='none';
+  if(playerLabel)playerLabel.style.display='none';
+  for(const l of opponentLabels)l.style.display='none';
   replay=false;autoReplay=false;celebrationActive=false;celebrationClock=0;
   hud.hideFinishBanner();hud.setDimmed(false);
   biggestFrames=[];airFrames=[];replayFrames.length=0;
@@ -222,6 +224,16 @@ const shadows=new THREE.InstancedMesh(shadowGeo,createMaterial(0x53654b,'shadow'
 shadows.frustumCulled=false;scene.add(shadows);const shadowTransform=new THREE.Object3D();
 const playerLabel=document.createElement('div');playerLabel.className='player-label';playerLabel.innerHTML='YOU <span>▼</span>';document.body.append(playerLabel);const labelPosition=new THREE.Vector3();
 const ghostLabel=document.createElement('div');ghostLabel.className='ghost-label';ghostLabel.innerHTML='GHOST (PB) <span>▼</span>';document.body.append(ghostLabel);const ghostLabelPosition=new THREE.Vector3();
+const opponentLabels: HTMLDivElement[] = [];
+const opponentLabelPositions: THREE.Vector3[] = [];
+for(let i=0;i<3;i++){
+  const lbl=document.createElement('div');
+  lbl.className='opponent-label';
+  lbl.style.display='none';
+  document.body.append(lbl);
+  opponentLabels.push(lbl);
+  opponentLabelPositions.push(new THREE.Vector3());
+}
 presentation=new Presentation(scene,camera,world,createMaterial);
 pipeline=new NPRPipeline(renderer,scene,camera);pipeline.setEnvironment(world.environment);resize();hud.setEffects(enhancedEffects,rainWeather);
 let ghostIndex=0;
@@ -415,7 +427,40 @@ function render(dt:number,draw=true){
   labelPosition.copy(shown.position);labelPosition.y+=1.1;fx.focusDistance=labelPosition.distanceTo(camera.position);labelPosition.project(camera);
   fx.focusX=labelPosition.x*.5+.5;fx.focusY=labelPosition.y*.5+.5;fx.cinematic=replay||celebrationActive||mode==='side'||mode==='front'?1:0;
   labelPosition.copy(shown.position);labelPosition.y+=2.5;labelPosition.project(camera);
-  playerLabel.style.display=race.phase==='racing'&&!replay&&!celebrationActive&&labelPosition.z<1?'block':'none';playerLabel.style.left=`${(labelPosition.x*.5+.5)*innerWidth}px`;playerLabel.style.top=`${(-labelPosition.y*.5+.5)*innerHeight}px`;
+  const showLabels=(race.phase==='racing'||race.phase==='countdown')&&!replay&&!celebrationActive&&!showcase;
+  playerLabel.style.display=showLabels&&labelPosition.z<1?'block':'none';
+  playerLabel.style.left=`${(labelPosition.x*.5+.5)*innerWidth}px`;
+  playerLabel.style.top=`${(-labelPosition.y*.5+.5)*innerHeight}px`;
+  if(race.player.color){
+    playerLabel.style.borderTopColor='#'+(race.player.color).toString(16).padStart(6,'0');
+  }
+
+  for(let i=1;i<race.riders.length;i++){
+    const opp=race.riders[i];
+    const lbl=opponentLabels[i-1];
+    const pos=opponentLabelPositions[i-1];
+    if(!lbl||!pos)continue;
+    if(!showLabels){
+      lbl.style.display='none';
+      continue;
+    }
+    pos.copy(opp.position);
+    pos.y+=2.5;
+    const dist=pos.distanceTo(camera.position);
+    pos.project(camera);
+    if(pos.z<1&&pos.z>-1&&Math.abs(pos.x)<1.15&&Math.abs(pos.y)<1.15&&dist<240){
+      lbl.style.display='block';
+      lbl.style.left=`${(pos.x*.5+.5)*innerWidth}px`;
+      lbl.style.top=`${(-pos.y*.5+.5)*innerHeight}px`;
+      const oppHex='#'+(opp.color||0x47bfae).toString(16).padStart(6,'0');
+      lbl.style.borderTopColor=oppHex;
+      lbl.innerHTML=`${opp.name||'RIDER'} <span>▼</span>`;
+      const scale=THREE.MathUtils.clamp(1.08-(dist-15)/180,0.72,1.0);
+      lbl.style.transform=`translate(-50%,-100%) scale(${scale.toFixed(2)})`;
+    }else{
+      lbl.style.display='none';
+    }
+  }
   world.update(camera,dt);
   pendingRenderTime+=effectDt;if(draw){renderer.info.reset();pipeline.render(pendingRenderTime,active?shown.speed:0,input.boost&&shown.boost>0?1:0,impact);pendingRenderTime=0;}
   perf.drawCalls=renderer.info.render.calls;perf.triangles=renderer.info.render.triangles;
