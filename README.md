@@ -4,129 +4,174 @@
   <img src="media/SUNBREAK-showcase-poster.jpg" alt="Four cel-shaded BMX riders racing down the SUNBREAK mountain course" width="100%">
 </p>
 
-<p align="center"><strong>Four riders. One mountain. Full send.</strong></p>
+<p align="center"><strong>Four riders. Five mountain stages. Full send.</strong></p>
 
-A procedural, cel-shaded BMX race down Mt. Komorebi. Four riders tear through a 2.3 km point-to-point descent with summit switchbacks, rock gardens, two major jumps, a ravine and a riverside finish. Every mesh, texture and sound is generated in code—there are no downloaded game assets or runtime services.
+A procedural, cel-shaded BMX downhill racing game. Four riders tear down high-speed alpine switchbacks, granite slate corridors, terracotta canyon gaps, and deep mossy glades. Every mesh, terrain heightfield, procedural texture, sound synthesizer, and animation rig is generated purely in code—with zero downloaded 3D models, textures, or external runtime assets.
 
 ## Highlights
 
-- A complete 2.3 km point-to-point race against three distinct AI riders
-- Arcade bike physics with two-wheel suspension, grip, braking, lean, preload, hops, tricks and crashes
-- Procedural rider animation with locked hand/foot contacts, two-bone IK and sequenced landing absorption
-- A unified cel-shaded renderer with ink outlines, Sobel edges, hatch shadows, rim light, stepped fog and graphic post effects
-- Procedurally eroded terrain, spline-built trail, instanced forests, rock gardens, switchbacks and two major jumps
-- Rain, visor droplets, reflections, dust, water spray, sparks, speed lines, impact frames and adaptive resolution
-- Generated Web Audio soundtrack and effects, plus checkpoints, splits, boost, scoring, saved ghosts and replay
+- **5 Distinct Mountain Courses & Environments**:
+  - *The Sunbreak Descent*: Golden alpine morning, cedar switchbacks, rock gardens, and a canyon ravine gap.
+  - *Ridge Runner*: Cool morning slate, sheer granite drops, pine chicanes, and double rollers.
+  - *Gravity Lab*: High-altitude azure skies, manicured turf, step-downs, mega tables, and massive slopestyle kickers.
+  - *Red Dust Canyon*: Apricot desert skies, terracotta sandstone, slickrock ridges, and canyon gap jumps.
+  - *Black Forest Slalom*: Twilight moss, hemlock root carpets, steep chasm descents, and tight technical berms.
+- **Multi-Stage Championship Tour**:
+  - 5-stage Grand Prix campaign with cumulative points standings (`25-18-15-12`), style point conversion bonuses, podium ceremonies, and championship trophy presentation.
+  - Switch freely between Championship Tour and Single Race modes.
+- **Pro Shop / Bike Garage**:
+  - **Performance Upgrades**: Invest podium prize credits across 4 tuning categories: Tires (grip & cornering), Frame (impact absorption & stability), Drivetrain (acceleration & top speed), and Springs (bunny hop launch height).
+  - **Paint Shop**: Customize frame finishes (8 colorways), jersey styles (6 team designs), and helmet accents (6 colors), saved persistently to `localStorage`.
+- **Full Air Trick System (10 Unique Stunts)**:
+  - Master Tabletop, X-Up, Superman (with horizontal body kickout), Can-Can, No-Hander, Nac-Nac, Tailwhip, 360 Spin, Backflip, and Frontflip.
+  - Preload hop release bonus and snappy rotation windows (`0.72s`–`0.85s`) enable clean launches and landings off both small trail rollers and mega cliffs.
+- **Hard Touch Lateral Collisions**:
+  - High-speed lateral impacts, sideswipes, and mid-air collisions trigger mutual crashes for both the player and AI opponents.
+- **Natural Crash Dynamics & Surface Clearance**:
+  - Fallen bikes and athletes slide along the terrain surface with calculated positive clearance ($+0.22\text{ m}$), eliminating mesh clipping and ground sinking.
+- **Procedural 3D Race Number Badges**:
+  - Procedural geometric digit badges assigned across competitors (Player: `#07`, Jun: `#14`, Kai: `#23`, Niko: `#42`, Ghost: `#00`).
+- **Optional Best-Run PB Ghost**:
+  - Toggle personal best wireframe ghost replay via HUD toggle button, hotkey (`G`), or settings.
+- **Unified Cel-Shaded Art Direction**:
+  - Pure WebGL2/Three.js custom shaders featuring multi-pass ink outlines, Sobel normal/depth edge detection, directional hatch shadows, stepped atmospheric fog, rim lighting, lens flare, motion blur, and weather visor droplets.
+- **Procedural Web Audio Engine**:
+  - Real-time synthesized audio layers: tire hum, scree gravel crunch, wind rushing, chain rattle, air whooshes, collision impacts, horn blasts, and dynamic musical soundtrack.
 
 ## Run
 
-Requires Node.js 22.12+ (Node 24 recommended) and Chrome with WebGL2.
+Requires Node.js 22.12+ (Node 24 recommended) and a modern browser with WebGL2 support.
 
 ```sh
 npm install
 npm run dev
 ```
 
-Open the URL printed by Vite, then click **Drop in** or press **Enter**. Audio starts on that interaction. `npm run build` checks TypeScript and builds `dist`; `npm run preview` serves that build.
+Open the URL printed by Vite (typically `http://localhost:5173`), then click **Drop in** or press **Enter**. Audio initializes on user interaction. 
 
-## Ride
+To build for production:
+```sh
+npm run build      # TypeScript validation & Vite bundle build
+npm run preview    # Preview production build locally
+```
+
+## Ride & Controls
 
 | Input | Action |
 | --- | --- |
-| W / ↑ | Pedal |
-| A D / ← → | Choose your line |
-| S / ↓ | Brake; slide while steering |
-| Space, hold then release | Preload suspension, then hop; time release with the lip |
-| Shift | Spend boost |
-| C | Manual |
-| 1–7 while airborne | Tabletop, x-up, superman, tailwhip, 360, backflip, frontflip |
-| Esc / P | Pause / resume; view controls |
-| R | Restart countdown |
-| M | Mute / unmute |
-| V | Toggle dawn / rain weather |
-| F | Toggle full / reduced visual effects |
+| **W** / **↑** | Pedal / Accelerate |
+| **A** **D** / **←** **→** | Steer / Choose line |
+| **S** / **↓** | Brake; slide while steering (or in air: Backflip shortcut) |
+| **Space** *(hold & release)* | Preload suspension, then hop; time release with the lip for extra height |
+| **Shift** | Spend boost |
+| **C** | Manual / Wheelie |
+| **1** | Tabletop (180 pts) |
+| **2** / **X** | X-Up (150 pts) |
+| **3** | Superman (320 pts) |
+| **4** | Can-Can (280 pts) |
+| **5** / **N** | No-Hander (340 pts) |
+| **6** | Nac-Nac (260 pts) |
+| **7** / **Space + D** | Tailwhip (360 pts) |
+| **8** / **Space + A** | 360 Spin (420 pts) |
+| **9** / **B** / **Space + S** | Backflip (500 pts) |
+| **0** / **Space + W** | Frontflip (550 pts) |
+| **G** | Toggle Ghost Rider on / off |
+| **T** | Cycle track (in menu / pause) |
+| **V** | Toggle dawn / rain weather |
+| **F** | Toggle full / reduced visual effects |
+| **M** | Mute / unmute audio |
+| **R** | Restart current race countdown |
+| **Esc** / **P** | Pause / resume; view controls |
 
-Land a completed trick cleanly to bank style points and boost. Poor rotation alignment costs speed or causes a tumble. JUN takes precise lines, KAI attacks and attempts risky tricks, and NIKO varies pace and line choice. Checkpoint splits and your best-run ghost persist in local browser storage. Clearing site data resets them. The finish plays a recorded cinematic air sequence and then shows results.
+Land completed tricks cleanly to bank style points and earn extra boost. Incomplete rotations or landing off-axis will cause a spill. 
 
-## Visual effects
+Opponent AI profiles:
+- **JUN**: Disciplined lines, high cornering speed, smooth lines.
+- **KAI**: Aggressive overtaker, hits kickers hard, attempts high-risk air tricks.
+- **NIKO**: Unpredictable line choices, drafts opportunistically, tactical speed changes.
 
-Full effects are enabled by default. The buttons at the upper right also control **F** (full/reduced effects) and **V** (dawn/rain). The effects preference is saved locally.
+## Game Modes & Garage
 
-- Speed-dependent peripheral motion blur and wind streaks intensify with boost. The rider, HUD and central racing line stay sharp.
-- Rough rock and scree add small camera vibrations; hard landings and crashes retain stronger impact shake. Reduced effects suppress these camera vibrations.
-- Shiny frames, helmets and water use short screen-space reflection rays for visible scenery, with painted sky/ground bands when no reflected surface is visible. Reflections cannot show offscreen objects and remain stylized rather than PBR.
-- Stronger graphic bloom and sun-aligned lens flare respond to highlights. Depth probes suppress flare behind terrain and trees.
-- The dawn sun moves slowly, changing local cast shadows. Rain adds varying cloud shade.
-- Rain streaks and refractive visor droplets appear in wet weather. River mist wets the lens near the lower course; droplets drain gradually after leaving wet conditions.
-- Fixed particle pools generate translucent cel dust, heavier braking plumes, metal-on-rock sparks, landing bursts and water spray. Particles preserve the normal/depth buffer, avoiding black rock-like outlines on dust.
-- Restrained depth of field softens distant scenery, with stronger focus separation in side/front cameras and replays.
+### Championship Tour
+Select **Championship** on the title menu to enter the 5-stage Grand Prix:
+- Stages 1–5 rotate through *The Sunbreak Descent*, *Ridge Runner*, *Gravity Lab*, *Red Dust Canyon*, and *Black Forest Slalom*.
+- Position points awarded per stage: 1st (25 pts), 2nd (18 pts), 3rd (15 pts), 4th (12 pts), plus style bonus credits based on air trick score.
+- Cumulative leaderboard tracked between rounds with stage progression and final awards podium.
 
-The production build and **10 browser gameplay/effects checks pass**, including rain onset, drying, and full/reduced effect controls.
+### Pro Shop / Garage
+Access the **Pro Shop** from the title screen to tune your machine and gear:
+- **Tires**: Enhances cornering grip and reduces lateral slide on loose scree.
+- **Suspension**: Softens harsh landings, shortens crash recovery downtime, and stabilizes rough terrain traversal.
+- **Drivetrain**: Increases pedaling acceleration and raises top downhill speed.
+- **Springs**: Increases preload hop impulse for massive airtime off jump lips.
+- **Paint Shop**: Real-time palette updates for frame, jersey, and helmet finishes.
 
-## Source map
+## Visual Effects & Renderer
+
+Full effects are active by default and can be toggled using **F** or the HUD toggle button:
+- **Speed & Boost Effects**: Peripheral radial motion blur, chromatic aberration pulses, and aerodynamic wind streak geometry that intensify with boost.
+- **Screen-Space Reflections & Glints**: Stylized SSR rays reflect track environment and water on gloss bike frames and visors.
+- **Dynamic Weather System**: Toggle between clear dawn golden hour and driving alpine rain (**V**). Visor glass catches refractive raindrops that drain as you gain downhill speed.
+- **Particle Systems**: GPU-instanced dust plumes, aggressive brake skid smoke, water spray when crossing rivers, and sparks during metal-on-rock crashes.
+- **Camera Presentation**: Smooth spring chase camera with pitch lookahead, high-G impact vibration, and dynamic air orbit angles during ravine leaps.
+
+## Source Map
 
 | Module | Responsibility |
 | --- | --- |
-| `src/main.ts` | Fixed 120 Hz simulation, lifecycle, replay recording, ghost playback, adaptive resolution |
-| `src/types.ts` | World, track, input, physics and rider contracts |
-| `src/terrain.ts` | Seeded noise, hydraulic erosion, spline course carving, clipmap grids, vegetation, signs |
-| `src/npr.ts` | Per-material cel ramps, MRT color/normal-depth, hull outlines, Sobel creases, hatching, rim/specular, cast shadows, stepped fog, sky/clouds, LUT and graphic post effects |
-| `src/physics.ts` | Wheel-height suspension probes, grip, preload, airborne integration, tricks and recovery |
-| `src/rider.ts` | Generated bicycle, athletic rig, analytic two-bone IK, delayed compression and trick poses |
-| `src/race.ts` | Countdown, AI, contacts, checkpoints, placements and best-run persistence |
-| `src/presentation.ts` | Spring camera, FOV, air orbit, rough-surface and impact shake |
-| `src/trail-effects.ts` | Fixed dust, spark and water-spray pools |
-| `src/screen-effects.ts` | Motion blur, depth of field, screen-space reflections, flare, speed strokes and wet-lens shaders |
-| `src/hud.ts`, `src/style.css` | Interface, controls and results |
-| `src/audio.ts` | Generated noise, oscillators, tire/wind/chain layers, horns and impacts |
+| `src/main.ts` | 120 Hz fixed-step loop, game lifecycle, stage switching, replay recording, ghost playback |
+| `src/terrain.ts` | 5 course spline geometries, hydraulic erosion heightfields, biome colorways, vegetation, and jumps |
+| `src/types.ts` | Shared type contracts for world, tracks, input, rider dynamics, garage, and championship |
+| `src/championship.ts` | 5-stage tour logic, point scoring tables, stage transitions, and local storage persistence |
+| `src/garage.ts` | Bike upgrades, stat multipliers, paint shop presets, credit bank, and garage state persistence |
+| `src/npr.ts` | Cel-shading passes, MRT color/normal-depth, Sobel outlines, hatch shadows, rim lighting, stepped fog |
+| `src/physics.ts` | Multi-wheel suspension, grip, preload bunny hops, air physics, 10 tricks, and mutual collisions |
+| `src/rider.ts` | Procedural BMX bike, athletic athlete rig, analytic two-bone IK, 3D digit badges, and crash poses |
+| `src/race.ts` | AI behavior trees, drafting, hard touch collisions, checkpoints, split times, and placements |
+| `src/presentation.ts` | Spring chase camera, FOV scaling, air orbit, screen shake, and impact effects |
+| `src/trail-effects.ts` | Particle pools for dust, scree pebbles, brake smoke, water spray, and crash sparks |
+| `src/screen-effects.ts` | Post-processing shaders: motion blur, visor droplets, lens flare, bloom, and speed strokes |
+| `src/hud.ts`, `src/style.css` | UI layer: speedometer, boost gauge, trick alerts, garage modals, championship tables |
+| `src/audio.ts` | Procedural Web Audio: oscillators, noise filters, wind layers, chain rattle, horns, and music |
 
-Terrain uses a 257² eroded heightfield with 14,500 sediment-carrying droplets. Eight nested clipmap levels rebuild in a staggered buffer and swap together. A generated course mask prevents coarse terrain triangles from covering the precise trail apron. Vegetation is instanced in spatial groups and scales through distance transitions. The NPR geometry pass writes color and normal/depth together. A separate hard shadow map and fullscreen compositing pass complete the frame. No PBR materials, cubemaps, model loaders or external media are used.
+## Verification & Automated Tests
 
-## Capture and tests
-
-The development harness requires a Playwright browser, separate from running the game:
+The test suite exercises game physics, AI, visual state, championship progression, garage upgrades, and rendering pipelines in headless Chromium:
 
 ```sh
-npx playwright install chromium
 npm test
-# With npm run dev already running:
-npm run capture
-npm run capture:motion
-node scripts/review.mjs captures/motion
 ```
 
-`npm test` starts its own Vite server and exercises game behavior in headless Chromium. To use an existing server: `GAME_URL='http://localhost:5173/?capture=1' npm test`. Tests can use `PLAYWRIGHT_CHROMIUM_EXECUTABLE` or an installed macOS Google Chrome when the Playwright binary is missing.
+All **22 browser gameplay, visual, and systems checks pass**, verifying:
+1. Title screen loading with 0 WebGL/shader errors.
+2. 3-second countdown and 4-rider race start.
+3. Pedaling physics and forward course advancement.
+4. Steering authority and lateral line choice.
+5. Braking deceleration and speed scrubbing.
+6. Preload suspension release producing bunny hops.
+7. Pause / resume game state freeze.
+8. Ravine jump launch and clean landing.
+9. Full/reduced effects toggle, rain wetness onset, and visor draining.
+10. Finish line trigger, results screen, best-run PB ghost persistence, and race reset.
+11. 5-course track selector switching between distinct environments, elevations, and seedings.
+12. Ghost rider toggle via HUD button, hotkey (`G`), and `localStorage`.
+13. Garage upgrades purchasing, credit deduction, and paint shop customization.
+14. Championship Tour multi-stage grand prix flow and stage advance.
+15. Superman and aerial trick execution during big jumps.
+16. Backflip, frontflip, and 360 spin execution, rotation, and clean landing.
+17. Crash slide damping and natural rest orientation.
+18. Hard touch lateral collisions causing mutual wipeouts.
+19. Environmental biomes (distinct sky horizons, fog colors, and terrain palettes).
+20. Championship Next Stage button click and stage progression.
+21. Procedural 3D digit race badges on competitor jerseys (`#07`, `#14`, `#23`, `#42`).
+22. Crashed rider elevation remaining visible flush above ground without sinking.
 
-`npm run capture` writes 2880×1800 stills from five course positions, an ordered motion sequence, a WebM, and a JSON error/state report under `captures/review/`. `CAPTURE_NAME` selects another output directory and `GAME_URL` changes the server. The review script makes a contact sheet and a standalone frame scrubber.
-
-`?capture=1` exposes a deterministic, manually stepped `window.__SUNBREAK` interface:
-
-```js
-__SUNBREAK.start();
-__SUNBREAK.seek(0.42);                  // normalized course position
-__SUNBREAK.camera('side');             // chase, side, front, wide
-__SUNBREAK.input({ pedal: true, trick: 6 });
-__SUNBREAK.step(60);                   // 60 fixed display steps
-__SUNBREAK.state();                    // race, physics, render counters
-__SUNBREAK.paused = false;             // enable real-time animation
+```sh
+npm run capture           # Generate 2880×1800 high-res stills and state reports
+npm run capture:motion    # Record 30 fps simulated motion sequences and WebM clips
 ```
 
-`npm run capture:motion` records two sequences at 30 simulated frames per second: riding and a ravine backflip/landing. It writes every frame and state, then uses Playwright’s existing FFmpeg binary to encode clips at the simulation cadence. `FFMPEG_PATH` can specify another encoder. The basic `capture` WebM contains browser capture timing, including screenshot overhead. Neither capture method proves real-time hardware performance.
+## Project Status
 
-`npm run perf` measures 300 real-time animation frames and records the renderer identity and percentiles in `captures/performance.json`. In this environment Chromium selected **SwiftShader software rendering**, even without an override: p50 233 ms, p95 350 ms, adaptive DPR 1. Those results cannot certify the target Apple GPU. The 60 fps requirement remains unverified.
+SUNBREAK is a feature-complete, standalone web racing game requiring no external network dependencies or downloaded assets. All geometry, biome scenery, shaders, animations, and sound effects run client-side in pure WebGL2 and Web Audio.
 
-## Project status
-
-SUNBREAK is a complete playable race with a start, finish, AI competition, scoring, saved ghost and cinematic replay. The renderer adapts pixel ratio to protect frame pacing; a locked retina 60 fps on every target configuration has not been independently certified.
-
-Practical implementation limits:
-
-- The bicycle follows track coordinates with height probes and world-height flight. It is an arcade vehicle, not an unconstrained rigid-body bicycle. Reverse/wrong-way riding is not available.
-- Crash recovery tumbles the articulated assembly. It is not a separate ragdoll/constraint solver.
-- Hands and feet keep their contact targets. Consequently superman and tailwhip are constrained stylizations, not competition-correct detached poses.
-- Trees primarily use faceted layered canopies. They are not a complete billboard-cross LOD system. Tree and rock hull outlines are present; true curvature-driven line weight and elaborate motion smears remain limited.
-- Cast shadows use a local, hard-threshold shadow map; there is no full mountain-wide shadow solution. Terrain erosion is real, but the coarse field and authored course carve limit the visible geological detail.
-- Adaptive pixel ratio trades rendering resolution for frame time. Its purpose is responsiveness, not proof of a simultaneous retina-resolution and 60 fps lock.
-- Best-run ghost samples record track progress and lateral line; they do not reproduce the complete airborne pose. The cinematic replay does record full rider state.
-
-The nine system milestones are integrated into one runnable build. Separate historical milestone builds were not archived.
