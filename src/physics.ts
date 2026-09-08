@@ -70,8 +70,9 @@ export function updatePhysics(state: RiderState, input: InputState, world: World
   dt = clamp(dt, 0, 1 / 30);
   const m = memory(state);
   const before = world.sample(state.s, state.lateral);
-  const groundBefore = Math.abs(state.lateral) > before.width * .6
-    ? world.height(before.position.x, before.position.z) : before.position.y;
+  const groundBefore = Math.abs(state.lateral) > before.width * .75
+    ? Math.max(world.height(before.position.x, before.position.z), before.jump > 0 ? before.position.y : -Infinity)
+    : before.position.y;
   // Debug seeking and checkpoint resets must never turn into enormous falls.
   if (!m.initialized || Math.abs(state.s - m.lastS) > 25) {
     m.initialized = true;
@@ -158,8 +159,9 @@ export function updatePhysics(state: RiderState, input: InputState, world: World
   }
   state.s = Math.min(world.length, state.s + state.speed * dt);
   const sample = world.sample(state.s, state.lateral);
-  const ground = Math.abs(state.lateral) > sample.width * .6
-    ? world.height(sample.position.x, sample.position.z) : sample.position.y;
+  const ground = Math.abs(state.lateral) > sample.width * .75
+    ? Math.max(world.height(sample.position.x, sample.position.z), sample.jump > 0 ? sample.position.y : -Infinity)
+    : sample.position.y;
   const front = world.sample(Math.min(world.length, state.s + .68), state.lateral);
   const rear = world.sample(Math.max(0, state.s - .68), state.lateral);
   if (state.s + .68 > world.length) {
@@ -172,18 +174,23 @@ export function updatePhysics(state: RiderState, input: InputState, world: World
   if (input.crouch && !state.airborne) m.preload = Math.min(1, m.preload + dt * 2.6);
 
   const hopMul = multipliers?.hopForce ?? 1;
-  const crossedLip = before.jump > .62 && sample.jump < .2;
+  const crossedLip = (world.jumpLips && world.jumpLips.some(lip => m.lastS <= lip && state.s >= lip))
+    || (before.jump > .55 && sample.jump < .25);
   const groundTrick = !state.airborne && input.trick > 0 && !input.crouch && state.speed > 4.5;
-  if (!state.airborne && m.cooldown === 0 && (crossedLip || input.hop || release || groundTrick)) {
+  const manualLaunch = !state.airborne && m.cooldown === 0 && (input.hop || release || groundTrick);
+
+  if (crossedLip || manualLaunch) {
     const isFlipOrSpin = input.trick === 8 || input.trick === 9 || input.trick === 10;
-    const launch = (crossedLip ? 6.8 : groundTrick ? (isFlipOrSpin ? 6.6 : 5.0) : 4.2) * hopMul;
+    const launch = (crossedLip ? (isFlipOrSpin ? 6.2 : 5.2) : groundTrick ? (isFlipOrSpin ? 6.6 : 4.5) : 3.2) * hopMul;
     state.airborne = true;
     state.airTime = 0;
-    state.vy = (crossedLip ? Math.max(-2, before.slope * state.speed) : before.slope * state.speed)
-      + launch + m.preload * 4.1 * hopMul;
-    m.worldY = Math.max(groundBefore, ground) + .04;
+    const slopeLift = crossedLip
+      ? clamp(before.slope * state.speed * 0.5, -1.0, 7.0)
+      : clamp(before.slope * state.speed * 0.35, -2.0, 3.5);
+    state.vy = slopeLift + launch + m.preload * 2.8 * hopMul;
+    m.worldY = Math.max(groundBefore, ground, m.worldY) + .04;
     state.y = Math.max(.04, m.worldY - ground);
-    m.cooldown = .55;
+    m.cooldown = .45;
     m.preload = 0;
     m.pendingScore = 0;
     m.trickId = 0; m.trickTime = 0;
@@ -197,7 +204,14 @@ export function updatePhysics(state: RiderState, input: InputState, world: World
     state.airTime += dt;
     state.vy -= 18.5 * dt;
     m.worldY += state.vy * dt;
-    state.y = m.worldY - ground;
+    if (m.worldY < ground) {
+      if (sample.jump > 0.05) {
+        // Prevent clipping into rising kicker ramps: keep bike flush with surface
+        m.worldY = ground;
+        state.vy = Math.max(state.vy, before.slope * state.speed * 0.4);
+      }
+    }
+    state.y = Math.max(0, m.worldY - ground);
     targetCompression = .02;
     let requestedTrick = clamp(Math.floor(input.trick), 0, 10);
     if (!requestedTrick && state.airborne && state.airTime > 0.08 && !m.trickId) {
@@ -227,7 +241,7 @@ export function updatePhysics(state: RiderState, input: InputState, world: World
     // Set absolute flip pitch so the damping cannot fight a completed rotation.
     if (m.trickId === 9) state.pitch = wheelPitch + trickAngle;
     if (m.trickId === 10) state.pitch = wheelPitch - trickAngle;
-    if (state.y <= 0 && state.airTime > .10) {
+    if (state.y <= 0 && state.airTime > .10 && sample.jump <= 0.05) {
       const impact = Math.max(0, -(state.vy - sample.slope * state.speed));
       const angleError = Math.abs(Math.atan2(Math.sin(state.pitch - wheelPitch), Math.cos(state.pitch - wheelPitch)));
       // Forgiving ordinary jumps; committing to half a flip has real consequences.
@@ -254,7 +268,7 @@ export function updatePhysics(state: RiderState, input: InputState, world: World
         state.pitch = wheelPitch; state.yaw = baseYaw; state.trickRotation = 0;
         state.trick = ''; m.pendingScore = 0; m.trickId = 0;
       }
-      m.cooldown = .28;
+      m.cooldown = sample.jump > 0.15 ? 0 : .28;
     }
   } else {
     m.worldY = ground; state.y = 0; state.airTime = 0;

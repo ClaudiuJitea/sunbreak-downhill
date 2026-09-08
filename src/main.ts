@@ -479,7 +479,7 @@ function render(dt:number,draw=true){
 function advance(dt:number,draw=true){
   if(freeze>0){freeze--;render(0,draw);return;}
   controls.update(dt);
-  const slow=race.player.airborne&&race.player.y>8?.72:1;
+  const slow=race.player.airborne&&race.player.y>4.5?.72:1;
   accumulator+=Math.min(dt,.05)*slow;
   let steps=0;while(accumulator>=1/120&&steps<8){tick(1/120);accumulator-=1/120;steps++;}
   render(dt,draw);

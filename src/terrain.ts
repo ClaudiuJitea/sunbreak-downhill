@@ -94,7 +94,7 @@ export const TRACK_DEFS: TrackDef[] = [
     ],
     elevationFn: (z: number) => 451 + z * .245 + Math.sin(-z / 270) * 9,
     jumpRatios: [.185, .360, .431, .580, .718, .885],
-    jumpLifts: [4.8, 5.0, 5.2, 5.6, 6.5, 5.2],
+    jumpLifts: [1.8, 2.0, 2.1, 2.3, 4.2, 2.1],
     hasRavine: true,
     ravineJumpIndex: 4,
     sectionNames: ['NEEDLE POINT','THE FALL LINE','CEDAR SWITCHBACKS','ROCK GARDEN','SKY TABLE','RAZOR RIDGE','THE DIVIDE','RIVER RUN','HOME STRAIGHT'],
@@ -131,7 +131,7 @@ export const TRACK_DEFS: TrackDef[] = [
     ],
     elevationFn: (z: number) => 468 + z * .252 + Math.sin(-z / 240) * 11,
     jumpRatios: [.160, .315, .450, .585, .720, .860],
-    jumpLifts: [5.2, 5.5, 5.8, 6.2, 5.6, 5.4],
+    jumpLifts: [1.9, 2.1, 2.2, 2.4, 2.2, 2.0],
     hasRavine: false,
     sectionNames: ['RAZOR CREST','DEVIL S DROP','PINE CHICANE','SLATE CORRIDOR','TWIN ROLLERS','CEDAR GORGE','THE FLUME','TIMBERLINE','SPRINT FINISH'],
     riverZ: -1780,
@@ -167,7 +167,7 @@ export const TRACK_DEFS: TrackDef[] = [
     ],
     elevationFn: (z: number) => 482 + z * .238 + Math.sin(-z / 290) * 13,
     jumpRatios: [.150, .260, .390, .510, .650, .780, .890],
-    jumpLifts: [6.2, 7.2, 7.0, 7.5, 7.8, 7.2, 6.8],
+    jumpLifts: [2.2, 2.5, 2.4, 2.6, 2.8, 2.5, 2.3],
     hasRavine: false,
     sectionNames: ['NORTH BLUFF','STEP DOWN','MEGA TABLE','BERM SLALOM','SUPER KICKER','HIP JUMP','SLOPESTYLE PARK','LAKE BASIN','VICTORY RUN'],
     riverZ: -1940,
@@ -203,7 +203,7 @@ export const TRACK_DEFS: TrackDef[] = [
     ],
     elevationFn: (z: number) => 475 + z * .244 + Math.sin(-z / 210) * 12 + Math.cos(-z / 420) * 8,
     jumpRatios: [.170, .310, .460, .590, .730, .870],
-    jumpLifts: [5.6, 6.4, 6.0, 7.4, 6.2, 5.8],
+    jumpLifts: [2.0, 2.3, 2.2, 2.5, 2.3, 2.1],
     hasRavine: false,
     sectionNames: ['SLICKROCK RIDGE','RED WALL DROP','SANDSTONE GULLY','COYOTE CHICANE','CANYON GAP','DUST BOWL','ECHO CHASM','RIVER BED','CANYON EXIT'],
     riverZ: -1840,
@@ -239,7 +239,7 @@ export const TRACK_DEFS: TrackDef[] = [
     ],
     elevationFn: (z: number) => 510 + z * .248 + Math.sin(-z / 260) * 14,
     jumpRatios: [.140, .280, .430, .580, .720, .860],
-    jumpLifts: [5.5, 6.2, 6.5, 7.0, 6.2, 5.8],
+    jumpLifts: [2.0, 2.2, 2.3, 2.5, 2.2, 2.1],
     hasRavine: false,
     sectionNames: ['CROWN PEAK','PINE NEEDLE DROP','ROOT CARPET','THE LABYRINTH','BEAR RIDGE GAP','MOSSY HOLLOW','TIMBER RUN','CREEK CROSSING','FINISH GLADE'],
     riverZ: -2040,
@@ -327,7 +327,7 @@ export function createWorld(materialFactory: MaterialFactory, trackId = 0): Worl
     for(let i=0;i<jumpLips.length;i++){
       const d=jumpLips[i]-s;
       if(d>=0&&d<17){
-        const lift=trackDef.jumpLifts[i]||5.0;
+        const lift=trackDef.jumpLifts[i]||2.2;
         return {height:(1-d/17)**1.7*lift,amount:1-d/17,lift};
       }
     }
@@ -348,7 +348,7 @@ export function createWorld(materialFactory: MaterialFactory, trackId = 0): Worl
     const dx=b.x-a.x,dz=b.z-a.z,t=THREE.MathUtils.clamp(((x-a.x)*dx+(z-a.z)*dz)/(dx*dx+dz*dz),0,1);
     const along=(Math.max(0,k-1)+t*(Math.min(totalCount,k+1)-Math.max(0,k-1)))*ds;
     const bed=THREE.MathUtils.lerp(a.y,b.y,t), bank=n.distance>5?Math.sin(Math.min((n.distance-5)/15,1)*Math.PI)*1.6:0;
-    return THREE.MathUtils.lerp(bed+bank,raw,smooth(7,29,n.distance))+ramp(along).height*(1-smooth(5,11,n.distance))-ravine(along)*(1-smooth(13,29,n.distance));
+    return THREE.MathUtils.lerp(bed+bank,raw,smooth(7,29,n.distance))+ramp(along).height*(1-smooth(7.5,13,n.distance))-ravine(along)*(1-smooth(13,29,n.distance));
   }
   const sectionNames=trackDef.sectionNames;
   function sample(s:number,lateral=0):TrackSample {
@@ -356,7 +356,7 @@ export function createWorld(materialFactory: MaterialFactory, trackId = 0): Worl
     const position=centers[i].clone().lerp(centers[i+1],u),tangent=tangents[i].clone().lerp(tangents[i+1],u).normalize(),right=rights[i].clone().lerp(rights[i+1],u).normalize();
     position.addScaledVector(right,lateral);
     const j=ramp(clamped);position.y+=j.height-ravine(clamped);
-    if(j.amount>0){const lift=j.lift||(clamped<jumpLips[0]+1?4.5:6.5);tangent.y+=1.7*lift/17*j.amount**.7*Math.hypot(tangent.x,tangent.z);tangent.normalize();}
+    if(j.amount>0){const lift=j.lift||2.2;tangent.y+=1.7*lift/17*j.amount**.7*Math.hypot(tangent.x,tangent.z);tangent.normalize();}
     // A broad, gentle berm reads clearly without forcing every rider onto its crown.
     const turn=tangents[Math.min(totalCount,i+7)].x-tangents[Math.max(0,i-7)].x;
     position.y+=Math.max(0,-Math.sign(turn)*lateral)*Math.min(Math.abs(turn)*.19,.08);
@@ -477,7 +477,8 @@ export function createWorld(materialFactory: MaterialFactory, trackId = 0): Worl
     }
     instances(trunkGeo,trunkMat,trunks,650);instances(canopyGeo,leafMat,leaves,650);addOutline(instances(canopyGeo,leafLight,upper,650),.65);addOutline(instances(rockGeo,rockMat,rocks,430),.8);
   }
-  const obstacles=Array.from({length:11},(_,i)=>({s:length*(.349+i*.0055),lateral:Math.sin(i*2.4)*2.6,radius:.38+(i%3)*.12}));
+  const rawObstacles=Array.from({length:11},(_,i)=>({s:length*(.349+i*.0055),lateral:Math.sin(i*2.4)*2.6,radius:.38+(i%3)*.12}));
+  const obstacles=rawObstacles.filter(o=>!jumpLips.some(lip=>o.s>=lip-17&&o.s<=lip+16));
   const obstacleItems=obstacles.map(o=>{const p=sample(o.s,o.lateral).position;p.y+=.15;return {position:p,scale:new THREE.Vector3(o.radius*1.1,o.radius*.7,o.radius),angle:o.s};});
   addOutline(instances(rockGeo,rockMat,obstacleItems,350),.85);
   // Grassy cut banks and clustered flowers. Blade triangles are geometry,
@@ -520,7 +521,7 @@ export function createWorld(materialFactory: MaterialFactory, trackId = 0): Worl
   for(let i=0;i<70;i++){dummy.position.set((random()-.5)*750,10.12,trackDef.riverZ+(random()-.5)*15);dummy.rotation.set(-Math.PI/2,0,0);dummy.scale.set(.5+random()*2,1,1);dummy.updateMatrix();waterGlints.setMatrixAt(i,dummy.matrix);}group.add(waterGlints);
 
   let frame=0;
-  return {group,length,totalLength,sample,height,checkpoints,obstacles,trackId:trackDef.id,trackName:trackDef.name,trackSubtitle:trackDef.subtitle,environment:env,update(camera,dt){
+  return {group,length,totalLength,sample,height,checkpoints,obstacles,trackId:trackDef.id,trackName:trackDef.name,trackSubtitle:trackDef.subtitle,environment:env,jumpLips,update(camera,dt){
     void dt;frame++;const x=camera.position.x,z=camera.position.z;
     // One bounded patch and one vegetation batch per frame avoids jump-time spikes.
     if(pendingRing<0){const nx=Math.round(x/16)*16,nz=Math.round(z/16)*16;if(nx!==clipX||nz!==clipZ){pendingX=nx;pendingZ=nz;pendingRing=0;}}
